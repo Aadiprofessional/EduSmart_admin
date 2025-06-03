@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaPlus, 
   FaEdit, 
@@ -9,7 +10,11 @@ import {
   FaDollarSign, 
   FaGraduationCap, 
   FaCalendarAlt, 
-  FaGlobe 
+  FaGlobe,
+  FaRocket,
+  FaStar,
+  FaAward,
+  FaBookOpen
 } from 'react-icons/fa';
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
@@ -42,6 +47,7 @@ const Scholarships: React.FC = () => {
   const [filterCountry, setFilterCountry] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingScholarship, setEditingScholarship] = useState<Scholarship | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -190,11 +196,40 @@ const Scholarships: React.FC = () => {
   const uniqueTypes = Array.from(new Set(scholarships.map(s => s.type).filter(Boolean)));
   const uniqueCountries = Array.from(new Set(scholarships.map(s => s.country).filter(Boolean)));
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: {
+      y: 0,
+      opacity: 1,
+      transition: {
+        type: "spring",
+        stiffness: 100
+      }
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout title="Scholarships Management">
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+          <motion.div 
+            className="relative"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          >
+            <div className="w-16 h-16 border-4 border-green-200 rounded-full"></div>
+            <div className="absolute top-0 left-0 w-16 h-16 border-4 border-green-600 rounded-full border-t-transparent animate-spin"></div>
+          </motion.div>
         </div>
       </MainLayout>
     );
@@ -202,39 +237,78 @@ const Scholarships: React.FC = () => {
 
   return (
     <MainLayout title="Scholarships Management">
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Scholarships Management</h1>
-            <p className="text-gray-600">Manage scholarship opportunities for students</p>
+      <motion.div 
+        className="space-y-8"
+        initial="hidden"
+        animate="visible"
+        variants={containerVariants}
+      >
+        {/* Futuristic Header */}
+        <motion.div 
+          className="relative overflow-hidden bg-gradient-to-r from-green-600 via-emerald-600 to-teal-600 rounded-2xl p-8 text-white"
+          variants={itemVariants}
+        >
+          <div className="absolute inset-0 bg-black opacity-20"></div>
+          <div className="absolute inset-0 bg-gradient-to-r from-green-400/20 to-emerald-400/20 backdrop-blur-sm"></div>
+          <div className="relative z-10 flex justify-between items-center">
+            <div>
+              <motion.h1 
+                className="text-4xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-green-200"
+                initial={{ x: -50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.2 }}
+              >
+                Scholarship Management
+              </motion.h1>
+              <motion.p 
+                className="text-green-100 text-lg"
+                initial={{ x: -50, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                Empower students with funding opportunities worldwide
+              </motion.p>
+            </div>
+            <motion.button
+              onClick={() => setIsModalOpen(true)}
+              className="bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-xl hover:bg-white/30 flex items-center gap-3 transition-all duration-300 border border-white/30"
+              whileHover={{ scale: 1.05, y: -2 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <IconWrapper icon={FaAward} />
+              Add Scholarship
+            </motion.button>
           </div>
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-          >
-            <IconWrapper icon={FaPlus} /> Add Scholarship
-          </button>
-        </div>
+          
+          {/* Animated background elements */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl animate-pulse"></div>
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-emerald-300/20 rounded-full blur-lg animate-bounce"></div>
+        </motion.div>
 
-        {/* Filters */}
-        <div className="bg-white p-6 rounded-lg shadow-sm border">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="relative">
-              <IconWrapper icon={FaSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+        {/* Advanced Filters */}
+        <motion.div 
+          className="bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-xl border border-gray-200/50"
+          variants={itemVariants}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+            <div className="relative md:col-span-2">
+              <IconWrapper icon={FaSearch} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search scholarships..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-12 pr-4 py-3 w-full border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
               />
             </div>
             
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm"
             >
               <option value="">All Types</option>
               {uniqueTypes.map(type => (
@@ -245,7 +319,7 @@ const Scholarships: React.FC = () => {
             <select
               value={filterCountry}
               onChange={(e) => setFilterCountry(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm"
             >
               <option value="">All Countries</option>
               {uniqueCountries.map(country => (
@@ -253,270 +327,419 @@ const Scholarships: React.FC = () => {
               ))}
             </select>
 
+            <div className="flex gap-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-4 py-3 rounded-xl transition-all duration-300 ${
+                  viewMode === 'grid' 
+                    ? 'bg-green-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-4 py-3 rounded-xl transition-all duration-300 ${
+                  viewMode === 'list' 
+                    ? 'bg-green-500 text-white shadow-lg' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                List
+              </button>
+            </div>
+
             <button
               onClick={() => {
                 setSearchTerm('');
                 setFilterType('');
                 setFilterCountry('');
               }}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+              className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-300"
             >
-              Clear Filters
+              Clear All
             </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Scholarships Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredScholarships.map((scholarship) => (
-            <div key={scholarship.id} className="bg-white rounded-lg shadow-sm border hover:shadow-md transition-shadow">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900 line-clamp-2">
-                    {scholarship.title}
-                  </h3>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(scholarship)}
-                      className="text-blue-600 hover:text-blue-800"
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={viewMode}
+            className={viewMode === 'grid' 
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8" 
+              : "space-y-6"
+            }
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            exit="hidden"
+          >
+            {filteredScholarships.map((scholarship) => (
+              <motion.div
+                key={scholarship.id}
+                variants={itemVariants}
+                className={`group relative overflow-hidden rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 bg-white border border-gray-200/50 ${
+                  viewMode === 'list' ? 'flex' : ''
+                }`}
+                whileHover={{ y: -8, scale: 1.02 }}
+                layout
+              >
+                {/* Scholarship Header */}
+                <div className={`relative ${viewMode === 'grid' ? 'p-6' : 'p-4 flex-1'}`}>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
+                          <IconWrapper icon={FaAward} className="text-white text-lg" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 line-clamp-2 group-hover:text-green-600 transition-colors duration-300">
+                            {scholarship.title}
+                          </h3>
+                          <p className="text-sm text-gray-500">{scholarship.provider}</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <motion.button
+                        onClick={() => handleEdit(scholarship)}
+                        className="p-2 bg-blue-500/80 text-white rounded-full hover:bg-blue-600/80 backdrop-blur-md"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <IconWrapper icon={FaEdit} />
+                      </motion.button>
+                      <motion.button
+                        onClick={() => handleDelete(scholarship.id)}
+                        className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-600/80 backdrop-blur-md"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <IconWrapper icon={FaTrash} />
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Scholarship Details */}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full">
+                        <IconWrapper icon={FaDollarSign} className="text-green-600" />
+                        <span className="text-green-800 font-medium">{scholarship.amount}</span>
+                      </div>
+                      <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full">
+                        <IconWrapper icon={FaGlobe} className="text-blue-600" />
+                        <span className="text-blue-800 text-sm">{scholarship.country}</span>
+                      </div>
+                    </div>
+                    
+                    {scholarship.deadline && (
+                      <div className="flex items-center gap-2 text-orange-600">
+                        <IconWrapper icon={FaCalendarAlt} />
+                        <span className="text-sm">Deadline: {new Date(scholarship.deadline).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-gray-700 mb-4 line-clamp-3">
+                    {scholarship.description}
+                  </p>
+
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {scholarship.type && (
+                      <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs rounded-full font-medium">
+                        {scholarship.type}
+                      </span>
+                    )}
+                    {scholarship.level && (
+                      <span className="px-3 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full font-medium">
+                        {scholarship.level}
+                      </span>
+                    )}
+                    {scholarship.field && (
+                      <span className="px-3 py-1 bg-pink-100 text-pink-800 text-xs rounded-full font-medium">
+                        {scholarship.field}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Apply Button */}
+                  {scholarship.application_url && (
+                    <motion.a
+                      href={scholarship.application_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      <IconWrapper icon={FaEdit} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(scholarship.id)}
-                      className="text-red-600 hover:text-red-800"
-                    >
-                      <IconWrapper icon={FaTrash} />
-                    </button>
-                  </div>
+                      <IconWrapper icon={FaRocket} />
+                      Apply Now
+                    </motion.a>
+                  )}
                 </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
 
-                <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <IconWrapper icon={FaGraduationCap} className="text-blue-500" />
-                    <span>{scholarship.provider}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <IconWrapper icon={FaDollarSign} className="text-green-500" />
-                    <span>{scholarship.amount}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <IconWrapper icon={FaGlobe} className="text-purple-500" />
-                    <span>{scholarship.country}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <IconWrapper icon={FaCalendarAlt} className="text-orange-500" />
-                    <span>{scholarship.deadline ? new Date(scholarship.deadline).toLocaleDateString() : 'No deadline'}</span>
-                  </div>
-                </div>
-
-                <p className="text-gray-700 mt-3 line-clamp-3">
-                  {scholarship.description}
-                </p>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
-                    {scholarship.type}
-                  </span>
-                  <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                    {scholarship.level}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
+        {/* Empty State */}
         {filteredScholarships.length === 0 && (
-          <div className="text-center py-12">
-            <IconWrapper icon={FaGraduationCap} className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No scholarships found</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              {searchTerm || filterType || filterCountry ? 'Try adjusting your filters' : 'Get started by creating a new scholarship'}
+          <motion.div 
+            className="text-center py-16"
+            variants={itemVariants}
+          >
+            <motion.div
+              className="mx-auto w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mb-6"
+              animate={{ 
+                rotate: [0, 10, -10, 0],
+                scale: [1, 1.1, 1]
+              }}
+              transition={{ 
+                duration: 2,
+                repeat: Infinity,
+                repeatType: "reverse"
+              }}
+            >
+              <IconWrapper icon={FaGraduationCap} className="text-white text-3xl" />
+            </motion.div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-2">No scholarships found</h3>
+            <p className="text-gray-600 mb-6">
+              {searchTerm || filterType || filterCountry ? 'Try adjusting your filters' : 'Get started by creating a new scholarship opportunity'}
             </p>
-          </div>
+            <motion.button
+              onClick={() => setIsModalOpen(true)}
+              className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 flex items-center gap-2 mx-auto"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <IconWrapper icon={FaPlus} />
+              Create First Scholarship
+            </motion.button>
+          </motion.div>
         )}
 
-        {/* Modal */}
-        {isModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
-                <h2 className="text-xl font-semibold mb-4">
-                  {editingScholarship ? 'Edit Scholarship' : 'Add New Scholarship'}
-                </h2>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Title *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.title}
-                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Provider *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.provider}
-                        onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Amount *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Deadline
-                      </label>
-                      <input
-                        type="date"
-                        value={formData.deadline}
-                        onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Country
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.country}
-                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Field
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.field}
-                        onChange={(e) => setFormData({ ...formData, field: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Level
-                      </label>
-                      <select
-                        value={formData.level}
-                        onChange={(e) => setFormData({ ...formData, level: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select Level</option>
-                        <option value="Undergraduate">Undergraduate</option>
-                        <option value="Graduate">Graduate</option>
-                        <option value="PhD">PhD</option>
-                        <option value="All">All</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Type
-                      </label>
-                      <select
-                        value={formData.type}
-                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      >
-                        <option value="">Select Type</option>
-                        <option value="Merit-based">Merit-based</option>
-                        <option value="Need-based">Need-based</option>
-                        <option value="Field-specific">Field-specific</option>
-                        <option value="Country-specific">Country-specific</option>
-                        <option value="University-specific">University-specific</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Application URL
-                    </label>
-                    <input
-                      type="url"
-                      value={formData.application_url}
-                      onChange={(e) => setFormData({ ...formData, application_url: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Description *
-                    </label>
-                    <textarea
-                      required
-                      rows={4}
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Eligibility
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={formData.eligibility}
-                      onChange={(e) => setFormData({ ...formData, eligibility: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
-                    <button
-                      type="button"
+        {/* Enhanced Modal */}
+        <AnimatePresence>
+          {isModalOpen && (
+            <motion.div 
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div 
+                className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50"
+                initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              >
+                <div className="p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+                      {editingScholarship ? 'Edit Scholarship' : 'Create New Scholarship'}
+                    </h2>
+                    <motion.button
                       onClick={handleCloseModal}
-                      className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all duration-300"
+                      whileHover={{ scale: 1.1, rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
                     >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                      {editingScholarship ? 'Update' : 'Create'} Scholarship
-                    </button>
+                      ✕
+                    </motion.button>
                   </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+                  
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Title *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.title}
+                          onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="Enter scholarship title..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Provider *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.provider}
+                          onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="Organization or institution..."
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Amount *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.amount}
+                          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., $5,000 or Full tuition"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Deadline
+                        </label>
+                        <input
+                          type="date"
+                          value={formData.deadline}
+                          onChange={(e) => setFormData({ ...formData, deadline: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Country
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.country}
+                          onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="Country or region"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Field of Study
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.field}
+                          onChange={(e) => setFormData({ ...formData, field: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., Engineering, Medicine"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Level
+                        </label>
+                        <select
+                          value={formData.level}
+                          onChange={(e) => setFormData({ ...formData, level: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        >
+                          <option value="">Select Level</option>
+                          <option value="Undergraduate">Undergraduate</option>
+                          <option value="Graduate">Graduate</option>
+                          <option value="PhD">PhD</option>
+                          <option value="All">All Levels</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Type
+                        </label>
+                        <select
+                          value={formData.type}
+                          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        >
+                          <option value="">Select Type</option>
+                          <option value="Merit-based">Merit-based</option>
+                          <option value="Need-based">Need-based</option>
+                          <option value="Field-specific">Field-specific</option>
+                          <option value="Country-specific">Country-specific</option>
+                          <option value="University-specific">University-specific</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Application URL
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.application_url}
+                        onChange={(e) => setFormData({ ...formData, application_url: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        placeholder="https://example.com/apply"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description *
+                      </label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        placeholder="Describe the scholarship opportunity..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Eligibility Criteria
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={formData.eligibility}
+                        onChange={(e) => setFormData({ ...formData, eligibility: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        placeholder="Who can apply for this scholarship..."
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                      <motion.button
+                        type="button"
+                        onClick={handleCloseModal}
+                        className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Cancel
+                      </motion.button>
+                      <motion.button
+                        type="submit"
+                        className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-300 flex items-center gap-2"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <IconWrapper icon={editingScholarship ? FaEdit : FaAward} />
+                        {editingScholarship ? 'Update Scholarship' : 'Create Scholarship'}
+                      </motion.button>
+                    </div>
+                  </form>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </MainLayout>
   );
 };

@@ -12,6 +12,10 @@ import Users from './pages/Users';
 import Courses from './pages/Courses';
 import Scholarships from './pages/Scholarships';
 import Universities from './pages/Universities';
+import Blogs from './pages/Blogs';
+import Resources from './pages/Resources';
+import Settings from './pages/Settings';
+import CaseStudies from './pages/CaseStudies';
 
 // Debug route component to check if redirects are happening
 const DebugRoute = ({ children }: { children: React.ReactNode }) => {
@@ -91,6 +95,13 @@ function App() {
                 </DebugRoute>
               </ProtectedRoute>
             } />
+            <Route path="/blogs" element={
+              <ProtectedRoute>
+                <DebugRoute>
+                  <Blogs />
+                </DebugRoute>
+              </ProtectedRoute>
+            } />
             <Route path="/scholarships" element={
               <ProtectedRoute>
                 <DebugRoute>
@@ -102,6 +113,27 @@ function App() {
               <ProtectedRoute>
                 <DebugRoute>
                   <Universities />
+                </DebugRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/resources" element={
+              <ProtectedRoute>
+                <DebugRoute>
+                  <Resources />
+                </DebugRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/case-studies" element={
+              <ProtectedRoute>
+                <DebugRoute>
+                  <CaseStudies />
+                </DebugRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <DebugRoute>
+                  <Settings />
                 </DebugRoute>
               </ProtectedRoute>
             } />

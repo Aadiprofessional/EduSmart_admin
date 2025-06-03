@@ -36,13 +36,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, title }) => {
     };
   }, []);
 
-  const contentVariants = {
-    expanded: { marginLeft: '240px', transition: { duration: 0.2 } },
-    collapsed: { marginLeft: '80px', transition: { duration: 0.2 } },
-  };
-
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       <Sidebar 
         collapsed={sidebarCollapsed} 
         toggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -50,22 +45,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ children, title }) => {
         toggleMobile={() => setMobileSidebarOpen(!mobileSidebarOpen)}
       />
       
-      <motion.main 
-        className="flex-1 flex flex-col overflow-hidden md:overflow-visible"
-        initial="expanded"
-        animate={sidebarCollapsed ? "collapsed" : "expanded"}
-        variants={contentVariants}
-      >
+      <div className="flex-1 flex flex-col overflow-hidden">
         <Header title={title} />
         
-        <div className="flex-1 overflow-auto p-6">
-          {children}
+        <div className="flex-1 overflow-auto">
+          <div className="p-4 md:p-6">
+            {children}
+          </div>
         </div>
         
-        <footer className="bg-white p-4 border-t border-gray-200 text-center text-sm text-gray-500">
+        <footer className="bg-white/80 backdrop-blur-md p-4 border-t border-gray-200/50 text-center text-sm text-gray-500">
           <p>© {new Date().getFullYear()} EduSmart Admin. All rights reserved.</p>
         </footer>
-      </motion.main>
+      </div>
     </div>
   );
 };
