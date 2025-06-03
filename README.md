@@ -1,46 +1,122 @@
-# Getting Started with Create React App
+# EduSmart Admin Panel
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+This is the admin dashboard for the EduSmart platform, providing a comprehensive interface for managing the entire education platform.
 
-## Available Scripts
+## Features
 
-In the project directory, you can run:
+- **User Management**: View, edit, and manage user accounts
+- **Course Management**: Create, update, and delete courses and lessons
+- **Blog Management**: Publish and manage blog posts
+- **Scholarship Management**: Maintain scholarship listings
+- **Resource Management**: Upload and organize educational resources
+- **Case Studies Management**: Showcase success stories
+- **Application Management**: Track and process student applications
 
-### `npm start`
+## Tech Stack
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- **Frontend**: React with TypeScript
+- **UI Framework**: Tailwind CSS
+- **Animation**: Framer Motion
+- **Authentication**: Supabase Auth
+- **Database**: PostgreSQL (via Supabase)
+- **Storage**: Supabase Storage
+- **State Management**: React Context API
+- **Notifications**: Notistack
+- **Form Handling**: React Hook Form
+- **Icons**: React Icons (Material Design)
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+## Getting Started
 
-### `npm test`
+### Prerequisites
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Node.js 14+ and npm
+- Supabase account with project setup
 
-### `npm run build`
+### Installation
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Clone the repository
+```bash
+git clone https://github.com/yourusername/edusmart_admin.git
+cd edusmart_admin
+```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+2. Install dependencies
+```bash
+npm install
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+3. Create a `.env` file in the root directory with your Supabase credentials
+```
+REACT_APP_SUPABASE_URL=your_supabase_url
+REACT_APP_SUPABASE_ANON_KEY=your_supabase_anon_key
+REACT_APP_SUPABASE_SERVICE_KEY=your_supabase_service_key
+```
 
-### `npm run eject`
+4. Run the development server
+```bash
+npm start
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+## Database Setup
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+The `db_setup.sql` file contains all the SQL commands needed to set up the database tables, security policies, and functions. Run this in your Supabase SQL editor to initialize the database.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+## Project Structure
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+```
+/src
+  /components           # Reusable UI components
+    /layout             # Layout components (Sidebar, Header, etc.)
+    /common             # Common UI elements
+    /forms              # Form components for data entry
+  /pages                # Application pages/routes
+  /utils                # Utility functions and helpers
+    /api.ts             # API functions for data fetching
+    /supabase.ts        # Supabase client setup
+    /types.ts           # TypeScript type definitions
+    /AuthContext.tsx    # Authentication context provider
+    /ProtectedRoute.tsx # Route protection component
+    /helpers.ts         # Helper functions
+    /fileUpload.ts      # File upload utilities
+  /hooks                # Custom React hooks
+  /assets               # Static assets (images, etc.)
+  App.tsx               # Main application component
+  index.tsx             # Application entry point
+```
 
-## Learn More
+## Authentication
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+The admin panel uses Supabase for authentication. Only users with the `is_admin` flag set to `true` in their profile can access the admin functions. The authentication flow is managed by the `AuthContext` provider.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Deployment
+
+1. Build the production bundle
+```bash
+npm run build
+```
+
+2. Deploy the contents of the `build` directory to your hosting service of choice.
+
+## Security
+
+- Row-Level Security (RLS) policies are implemented in Supabase to restrict data access
+- Protected routes ensure only authenticated admin users can access the admin panel
+- Service role API keys are only used server-side for admin operations
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License.
+
+## Contact
+
+Your Name - your.email@example.com
+
+Project Link: [https://github.com/yourusername/edusmart_admin](https://github.com/yourusername/edusmart_admin)
