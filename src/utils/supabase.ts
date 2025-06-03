@@ -70,11 +70,12 @@ export const supabaseAdmin = (() => {
 // Database schema types
 export type Profile = {
   id: string;
-  updated_at: string | null;
-  created_at?: string | null;
+  email: string;
   name: string | null;
+  role: string;
   avatar_url: string | null;
-  is_admin: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Application = {

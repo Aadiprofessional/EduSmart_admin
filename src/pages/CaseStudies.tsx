@@ -162,7 +162,7 @@ const CaseStudies: React.FC = () => {
     ));
   };
 
-  const filteredCaseStudies = caseStudies.filter(caseStudy => {
+  const filteredCaseStudies = Array.isArray(caseStudies) ? caseStudies.filter(caseStudy => {
     const matchesSearch = caseStudy.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          caseStudy.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          caseStudy.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -171,9 +171,9 @@ const CaseStudies: React.FC = () => {
     const matchesCategory = !filterCategory || caseStudy.category === filterCategory;
 
     return matchesSearch && matchesCategory;
-  });
+  }) : [];
 
-  const uniqueCategories = Array.from(new Set(caseStudies.map(cs => cs.category)));
+  const uniqueCategories = Array.from(new Set(Array.isArray(caseStudies) ? caseStudies.map(cs => cs.category) : []));
 
   const containerVariants = {
     hidden: { opacity: 0 },

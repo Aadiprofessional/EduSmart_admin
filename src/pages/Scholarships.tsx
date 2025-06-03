@@ -19,6 +19,8 @@ import {
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
+import { useAuth } from '../utils/AuthContext';
+import { scholarshipAPI } from '../utils/apiService';
 
 interface Scholarship {
   id: string;
@@ -36,8 +38,6 @@ interface Scholarship {
   created_at: string;
   updated_at: string;
 }
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://edusmart-server.vercel.app/api';
 
 const Scholarships: React.FC = () => {
   const [scholarships, setScholarships] = useState<Scholarship[]>([]);
@@ -63,6 +63,7 @@ const Scholarships: React.FC = () => {
   });
 
   const { enqueueSnackbar } = useSnackbar();
+  const { getAdminUID } = useAuth();
 
   useEffect(() => {
     fetchScholarships();
@@ -70,17 +71,27 @@ const Scholarships: React.FC = () => {
 
   const fetchScholarships = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/scholarships`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setScholarships(data.data);
+      const response = await scholarshipAPI.getAll();
+      if (response.success) {
+        // Handle different possible data structures from the API
+        let scholarshipsData = response.data;
+        
+        // If data is an object with a scholarships property, use that
+        if (scholarshipsData && typeof scholarshipsData === 'object' && scholarshipsData.scholarships) {
+          scholarshipsData = scholarshipsData.scholarships;
+        }
+        
+        // Ensure we always set an array
+        setScholarships(Array.isArray(scholarshipsData) ? scholarshipsData : []);
       } else {
+        console.error('Failed to fetch scholarships:', response.error);
         enqueueSnackbar('Failed to fetch scholarships', { variant: 'error' });
+        setScholarships([]); // Ensure scholarships is set to empty array on error
       }
     } catch (error) {
       console.error('Error fetching scholarships:', error);
       enqueueSnackbar('Error fetching scholarships', { variant: 'error' });
+      setScholarships([]); // Ensure scholarships is set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -89,33 +100,23 @@ const Scholarships: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const adminUID = getAdminUID();
+    if (!adminUID) {
+      enqueueSnackbar('Admin UID not available', { variant: 'error' });
+      return;
+    }
+    
     try {
-      const url = editingScholarship 
-        ? `${API_BASE_URL}/scholarships/${editingScholarship.id}`
-        : `${API_BASE_URL}/scholarships`;
-      
-      const method = editingScholarship ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        enqueueSnackbar(
-          editingScholarship ? 'Scholarship updated successfully' : 'Scholarship created successfully',
-          { variant: 'success' }
-        );
-        fetchScholarships();
-        handleCloseModal();
+      if (editingScholarship) {
+        await scholarshipAPI.update(editingScholarship.id, formData, adminUID);
+        enqueueSnackbar('Scholarship updated successfully', { variant: 'success' });
       } else {
-        enqueueSnackbar(data.message || 'Operation failed', { variant: 'error' });
+        await scholarshipAPI.create(formData, adminUID);
+        enqueueSnackbar('Scholarship created successfully', { variant: 'success' });
       }
+      
+      fetchScholarships();
+      handleCloseModal();
     } catch (error) {
       console.error('Error saving scholarship:', error);
       enqueueSnackbar('Error saving scholarship', { variant: 'error' });
@@ -127,19 +128,16 @@ const Scholarships: React.FC = () => {
       return;
     }
 
+    const adminUID = getAdminUID();
+    if (!adminUID) {
+      enqueueSnackbar('Admin UID not available', { variant: 'error' });
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/scholarships/${id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        enqueueSnackbar('Scholarship deleted successfully', { variant: 'success' });
-        fetchScholarships();
-      } else {
-        enqueueSnackbar(data.message || 'Failed to delete scholarship', { variant: 'error' });
-      }
+      await scholarshipAPI.delete(id, adminUID);
+      enqueueSnackbar('Scholarship deleted successfully', { variant: 'success' });
+      fetchScholarships();
     } catch (error) {
       console.error('Error deleting scholarship:', error);
       enqueueSnackbar('Error deleting scholarship', { variant: 'error' });
@@ -182,7 +180,7 @@ const Scholarships: React.FC = () => {
     });
   };
 
-  const filteredScholarships = scholarships.filter(scholarship => {
+  const filteredScholarships = Array.isArray(scholarships) ? scholarships.filter(scholarship => {
     const matchesSearch = scholarship.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          scholarship.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          scholarship.description.toLowerCase().includes(searchTerm.toLowerCase());
@@ -191,10 +189,10 @@ const Scholarships: React.FC = () => {
     const matchesCountry = !filterCountry || scholarship.country === filterCountry;
 
     return matchesSearch && matchesType && matchesCountry;
-  });
+  }) : [];
 
-  const uniqueTypes = Array.from(new Set(scholarships.map(s => s.type).filter(Boolean)));
-  const uniqueCountries = Array.from(new Set(scholarships.map(s => s.country).filter(Boolean)));
+  const uniqueTypes = Array.from(new Set(Array.isArray(scholarships) ? scholarships.map(s => s.type).filter(Boolean) : []));
+  const uniqueCountries = Array.from(new Set(Array.isArray(scholarships) ? scholarships.map(s => s.country).filter(Boolean) : []));
 
   const containerVariants = {
     hidden: { opacity: 0 },

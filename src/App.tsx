@@ -26,7 +26,7 @@ const DebugRoute = ({ children }: { children: React.ReactNode }) => {
       pathname: window.location.pathname,
       user: user?.id,
       hasProfile: !!profile,
-      isAdmin: profile?.is_admin
+      isAdmin: profile?.role === 'admin'
     });
   }, [user, profile]);
   

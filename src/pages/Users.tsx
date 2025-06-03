@@ -43,10 +43,11 @@ const Users: React.FC = () => {
   const fetchUsers = async () => {
     try {
       const data = await getUsers();
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching users:', error);
       enqueueSnackbar('Error fetching users', { variant: 'error' });
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -84,7 +85,7 @@ const Users: React.FC = () => {
     setShowConfirmModal(true);
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = Array.isArray(users) ? users.filter(user => {
     const matchesSearch = user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email?.toLowerCase().includes(searchTerm.toLowerCase());
     
@@ -93,7 +94,7 @@ const Users: React.FC = () => {
                        (filterRole === 'user' && !user.is_admin);
 
     return matchesSearch && matchesRole;
-  });
+  }) : [];
 
   const containerVariants = {
     hidden: { opacity: 0 },

@@ -14,6 +14,7 @@ type AuthContextType = {
   }>;
   signOut: () => Promise<void>;
   checkAdminStatus: () => Promise<boolean>;
+  getAdminUID: () => string | null;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,7 +33,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       hasProfile: !!profile, 
       hasSession: !!session,
       loading,
-      sessionChecked
+      sessionChecked,
+      isAdmin: profile?.role === 'admin'
     });
   }, [user, profile, session, loading, sessionChecked]);
   
@@ -104,16 +106,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const fetchProfile = async (userId: string) => {
     try {
-      // Add more logging to help diagnose issues
       console.log('Fetching profile for user:', userId);
       
-      // Special handling for specific user ID to ensure admin access
-      const shouldBeAdmin = userId === 'b1ea521c-3168-472e-8b76-33aac54402fb';
-      if (shouldBeAdmin) {
-        console.log('Detected admin user, ensuring admin privileges');
-      }
-      
-      // Ensure we're using the admin client with proper auth
       const { data, error } = await supabaseAdmin
         .from('profiles')
         .select('*')
@@ -122,14 +116,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       if (error) {
         console.error('Error fetching profile:', error.message, error.details, error.hint);
-        // Set profile to null but don't throw an error - the user might exist but not have a profile yet
         
         // Create a profile for the user if one doesn't exist
         try {
           console.log('No profile found, creating default profile');
           const newProfile = {
             id: userId,
-            is_admin: shouldBeAdmin, // Set admin based on user ID
+            email: user?.email || '',
+            role: 'user', // Default to regular user
             name: null,
             avatar_url: null,
             updated_at: new Date().toISOString(),
@@ -158,62 +152,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
 
       if (data) {
-        console.log('Profile data retrieved successfully');
-        
-        // If the special user doesn't have admin privileges, update their profile
-        if (shouldBeAdmin && data.is_admin !== true) {
-          console.log('Updating admin privileges for admin user');
-          try {
-            const { data: updatedData, error: updateError } = await supabaseAdmin
-              .from('profiles')
-              .update({ is_admin: true })
-              .eq('id', userId)
-              .select()
-              .single();
-              
-            if (updateError) {
-              console.error('Error updating admin status:', updateError);
-              setProfile(data as Profile);
-            } else {
-              console.log('Updated admin status successfully');
-              setProfile(updatedData as Profile);
-            }
-          } catch (updateError) {
-            console.error('Exception updating admin status:', updateError);
-            setProfile(data as Profile);
-          }
-        } else {
-          setProfile(data as Profile);
-        }
+        console.log('Profile data retrieved successfully, role:', data.role);
+        setProfile(data as Profile);
       } else {
         console.warn('No profile found for user:', userId);
-        // Create a default profile for the user - they might be a new user
-        try {
-          const newProfile = {
-            id: userId,
-            is_admin: shouldBeAdmin, // Set admin based on user ID
-            name: null,
-            avatar_url: null,
-            updated_at: new Date().toISOString(),
-          };
-          
-          const { data: insertedProfile, error: insertError } = await supabaseAdmin
-            .from('profiles')
-            .insert([newProfile])
-            .select()
-            .single();
-            
-          if (insertError) {
-            console.error('Error creating default profile:', insertError);
-            setProfile(null);
-          } else {
-            console.log('Created default profile for user');
-            setProfile(insertedProfile as Profile);
-          }
-        } catch (createError) {
-          console.error('Exception creating profile:', createError);
-          setProfile(null);
-        }
+        setProfile(null);
       }
     } catch (error: any) {
       console.error('Exception in fetchProfile:', error.message);
@@ -237,25 +180,38 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         throw error;
       }
 
-      console.log('Sign in successful, user authenticated');
+      console.log('Sign in successful, checking admin status...');
 
-      // TEMPORARY FIX: Skip admin check and always consider users as admins
-      console.log('TEMPORARY FIX: Bypassing admin check for development');
-      
       if (data.user) {
-        // Force admin status for this user in the database
-        try {
-          await supabaseAdmin
-            .from('profiles')
-            .upsert({
-              id: data.user.id,
-              is_admin: true,
-              updated_at: new Date().toISOString()
-            }, { onConflict: 'id' });
-          console.log('Ensured admin status in database');
-        } catch (err) {
-          console.error('Failed to ensure admin status:', err);
+        // Fetch the user's profile to check admin status
+        const { data: profileData, error: profileError } = await supabaseAdmin
+          .from('profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching profile during login:', profileError);
+          // Sign out the user since we can't verify admin status
+          await supabase.auth.signOut();
+          return { 
+            success: false, 
+            error: 'Unable to verify admin privileges. Please contact support.' 
+          };
         }
+
+        // Check if user is admin
+        if (profileData?.role !== 'admin') {
+          console.log('User is not an admin, denying access');
+          // Sign out the user
+          await supabase.auth.signOut();
+          return { 
+            success: false, 
+            error: 'Access denied. This application is restricted to administrators only.' 
+          };
+        }
+
+        console.log('Admin verification successful');
       }
       
       return { success: true, error: null };
@@ -287,45 +243,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       console.log('Checking admin status for user:', user.id);
       
-      // Force admin status for specific user
-      if (user.id === 'b1ea521c-3168-472e-8b76-33aac54402fb') {
-        console.log('Special user detected, bypassing admin check');
-        
-        // Ensure the database entry is updated too
-        try {
-          await supabaseAdmin
-            .from('profiles')
-            .update({ is_admin: true })
-            .eq('id', user.id);
-          console.log('Updated database admin status for special user');
-        } catch (updateError) {
-          console.error('Failed to update admin status, but still allowing access:', updateError);
-        }
-        
-        return true;
-      }
-      
       // First check if we already have the profile in state
       if (profile) {
-        console.log('Using cached profile for admin check:', profile.is_admin);
-        return profile.is_admin === true;
+        console.log('Using cached profile for admin check:', profile.role);
+        return profile.role === 'admin';
       }
       
       // Otherwise query the database
       const { data, error } = await supabaseAdmin
         .from('profiles')
-        .select('is_admin')
+        .select('role')
         .eq('id', user.id)
         .single();
 
       if (error) {
         console.error('Error checking admin status:', error);
-        // Handle error gracefully with retries
-        const secondAttempt = await retryAdminCheck();
-        return secondAttempt;
+        return false;
       }
 
-      const isAdmin = data?.is_admin === true;
+      const isAdmin = data?.role === 'admin';
       console.log('Admin status check result:', isAdmin);
       return isAdmin;
     } catch (error) {
@@ -334,30 +270,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Helper function to retry admin check with a short delay
-  const retryAdminCheck = async (): Promise<boolean> => {
-    if (!user) return false;
-    
-    try {
-      console.log('Retrying admin status check after short delay');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const { data, error } = await supabaseAdmin
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .single();
-        
-      if (error || !data) {
-        console.error('Error in retry admin check:', error);
-        return false;
-      }
-      
-      return data.is_admin === true;
-    } catch (error) {
-      console.error('Exception in retry admin check:', error);
-      return false;
-    }
+  // Get the current user's UID for API calls
+  const getAdminUID = (): string | null => {
+    return user?.id || null;
   };
 
   const value = {
@@ -368,6 +283,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     signIn,
     signOut,
     checkAdminStatus,
+    getAdminUID,
   };
 
   // Don't render until we've checked for an existing session

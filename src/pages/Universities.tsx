@@ -84,13 +84,24 @@ const Universities: React.FC = () => {
       const data = await response.json();
       
       if (data.success) {
-        setUniversities(data.data);
+        // Handle different possible data structures from the API
+        let universitiesData = data.data;
+        
+        // If data is an object with a universities property, use that
+        if (universitiesData && typeof universitiesData === 'object' && universitiesData.universities) {
+          universitiesData = universitiesData.universities;
+        }
+        
+        // Ensure we always set an array
+        setUniversities(Array.isArray(universitiesData) ? universitiesData : []);
       } else {
         enqueueSnackbar('Failed to fetch universities', { variant: 'error' });
+        setUniversities([]); // Ensure universities is set to empty array on error
       }
     } catch (error) {
       console.error('Error fetching universities:', error);
       enqueueSnackbar('Error fetching universities', { variant: 'error' });
+      setUniversities([]); // Ensure universities is set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -213,7 +224,7 @@ const Universities: React.FC = () => {
     });
   };
 
-  const filteredUniversities = universities.filter(university => {
+  const filteredUniversities = Array.isArray(universities) ? universities.filter(university => {
     const matchesSearch = university.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          university.city.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          university.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -221,9 +232,9 @@ const Universities: React.FC = () => {
     const matchesCountry = !filterCountry || university.country === filterCountry;
 
     return matchesSearch && matchesCountry;
-  });
+  }) : [];
 
-  const uniqueCountries = Array.from(new Set(universities.map(u => u.country).filter(Boolean)));
+  const uniqueCountries = Array.from(new Set(Array.isArray(universities) ? universities.map(u => u.country).filter(Boolean) : []));
 
   const containerVariants = {
     hidden: { opacity: 0 },

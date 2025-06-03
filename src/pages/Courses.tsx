@@ -48,10 +48,11 @@ const Courses: React.FC = () => {
   const fetchCourses = async () => {
     try {
       const data = await getCourses();
-      setCourses(data);
+      setCourses(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching courses:', error);
       enqueueSnackbar('Error fetching courses', { variant: 'error' });
+      setCourses([]);
     } finally {
       setLoading(false);
     }
@@ -101,7 +102,7 @@ const Courses: React.FC = () => {
     navigate('/courses/new');
   };
 
-  const filteredCourses = courses.filter(course => {
+  const filteredCourses = Array.isArray(courses) ? courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.instructor_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          course.description?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -110,10 +111,10 @@ const Courses: React.FC = () => {
     const matchesLevel = !filterLevel || course.level === filterLevel;
 
     return matchesSearch && matchesCategory && matchesLevel;
-  });
+  }) : [];
 
-  const uniqueCategories = Array.from(new Set(courses.map(c => c.category).filter(Boolean)));
-  const uniqueLevels = Array.from(new Set(courses.map(c => c.level).filter(Boolean)));
+  const uniqueCategories = Array.from(new Set(Array.isArray(courses) ? courses.map(c => c.category).filter(Boolean) : []));
+  const uniqueLevels = Array.from(new Set(Array.isArray(courses) ? courses.map(c => c.level).filter(Boolean) : []));
 
   const containerVariants = {
     hidden: { opacity: 0 },

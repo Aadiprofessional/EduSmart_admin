@@ -19,6 +19,8 @@ import {
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
+import { useAuth } from '../utils/AuthContext';
+import { blogAPI } from '../utils/apiService';
 
 interface Blog {
   id: string;
@@ -34,8 +36,6 @@ interface Blog {
   slug: string;
   tags: string[];
 }
-
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://edusmart-server.vercel.app/api';
 
 const Blogs: React.FC = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
@@ -57,6 +57,7 @@ const Blogs: React.FC = () => {
   });
 
   const { enqueueSnackbar } = useSnackbar();
+  const { getAdminUID } = useAuth();
 
   useEffect(() => {
     fetchBlogs();
@@ -64,17 +65,27 @@ const Blogs: React.FC = () => {
 
   const fetchBlogs = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setBlogs(data.data);
+      const response = await blogAPI.getAll();
+      if (response.success) {
+        // Handle different possible data structures from the API
+        let blogsData = response.data;
+        
+        // If data is an object with a blogs property, use that
+        if (blogsData && typeof blogsData === 'object' && blogsData.blogs) {
+          blogsData = blogsData.blogs;
+        }
+        
+        // Ensure we always set an array
+        setBlogs(Array.isArray(blogsData) ? blogsData : []);
       } else {
+        console.error('Failed to fetch blogs:', response.error);
         enqueueSnackbar('Failed to fetch blogs', { variant: 'error' });
+        setBlogs([]); // Ensure blogs is set to empty array on error
       }
     } catch (error) {
       console.error('Error fetching blogs:', error);
       enqueueSnackbar('Error fetching blogs', { variant: 'error' });
+      setBlogs([]); // Ensure blogs is set to empty array on error
     } finally {
       setLoading(false);
     }
@@ -83,6 +94,12 @@ const Blogs: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    const adminUID = getAdminUID();
+    if (!adminUID) {
+      enqueueSnackbar('Admin UID not available', { variant: 'error' });
+      return;
+    }
+    
     try {
       const submitData = {
         ...formData,
@@ -90,32 +107,16 @@ const Blogs: React.FC = () => {
         slug: formData.slug || formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
       };
 
-      const url = editingBlog 
-        ? `${API_BASE_URL}/blogs/${editingBlog.id}`
-        : `${API_BASE_URL}/blogs`;
-      
-      const method = editingBlog ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        enqueueSnackbar(
-          editingBlog ? 'Blog updated successfully' : 'Blog created successfully',
-          { variant: 'success' }
-        );
-        fetchBlogs();
-        handleCloseModal();
+      if (editingBlog) {
+        await blogAPI.update(editingBlog.id, submitData, adminUID);
+        enqueueSnackbar('Blog updated successfully', { variant: 'success' });
       } else {
-        enqueueSnackbar(data.message || 'Operation failed', { variant: 'error' });
+        await blogAPI.create(submitData, adminUID);
+        enqueueSnackbar('Blog created successfully', { variant: 'success' });
       }
+      
+      fetchBlogs();
+      handleCloseModal();
     } catch (error) {
       console.error('Error saving blog:', error);
       enqueueSnackbar('Error saving blog', { variant: 'error' });
@@ -127,19 +128,16 @@ const Blogs: React.FC = () => {
       return;
     }
 
+    const adminUID = getAdminUID();
+    if (!adminUID) {
+      enqueueSnackbar('Admin UID not available', { variant: 'error' });
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/${id}`, {
-        method: 'DELETE',
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        enqueueSnackbar('Blog deleted successfully', { variant: 'success' });
-        fetchBlogs();
-      } else {
-        enqueueSnackbar(data.message || 'Failed to delete blog', { variant: 'error' });
-      }
+      await blogAPI.delete(id, adminUID);
+      enqueueSnackbar('Blog deleted successfully', { variant: 'success' });
+      fetchBlogs();
     } catch (error) {
       console.error('Error deleting blog:', error);
       enqueueSnackbar('Error deleting blog', { variant: 'error' });
@@ -176,7 +174,7 @@ const Blogs: React.FC = () => {
     });
   };
 
-  const filteredBlogs = blogs.filter(blog => {
+  const filteredBlogs = Array.isArray(blogs) ? blogs.filter(blog => {
     const matchesSearch = blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          blog.author_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          blog.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
@@ -186,7 +184,7 @@ const Blogs: React.FC = () => {
                          (filterStatus === 'draft' && !blog.is_published);
 
     return matchesSearch && matchesStatus;
-  });
+  }) : [];
 
   const containerVariants = {
     hidden: { opacity: 0 },

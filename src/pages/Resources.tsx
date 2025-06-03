@@ -159,7 +159,7 @@ const Resources: React.FC = () => {
     }
   };
 
-  const filteredResources = resources.filter(resource => {
+  const filteredResources = Array.isArray(resources) ? resources.filter(resource => {
     const matchesSearch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          resource.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          resource.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -169,10 +169,10 @@ const Resources: React.FC = () => {
     const matchesCategory = !filterCategory || resource.category === filterCategory;
 
     return matchesSearch && matchesType && matchesCategory;
-  });
+  }) : [];
 
-  const uniqueTypes = Array.from(new Set(resources.map(r => r.type)));
-  const uniqueCategories = Array.from(new Set(resources.map(r => r.category)));
+  const uniqueTypes = Array.from(new Set(Array.isArray(resources) ? resources.map(r => r.type) : []));
+  const uniqueCategories = Array.from(new Set(Array.isArray(resources) ? resources.map(r => r.category) : []));
 
   const containerVariants = {
     hidden: { opacity: 0 },
