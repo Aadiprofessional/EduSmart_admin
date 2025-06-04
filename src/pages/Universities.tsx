@@ -20,125 +20,235 @@ import {
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
+import { universityAPI, useAdminUID } from '../utils/apiService';
 
 interface University {
   id: string;
   name: string;
+  description: string;
   country: string;
   city: string;
   state: string;
-  website_url: string;
-  logo_url: string;
-  description: string;
-  rankings: number;
-  acceptance_rate: number;
-  tuition_fees: string;
-  programs: string[];
+  address: string;
+  website: string;
+  contact_email: string;
+  contact_phone: string;
   established_year: number;
+  type: string;
+  ranking: number;
+  tuition_fee: number;
+  application_fee: number;
+  acceptance_rate: number;
   student_population: number;
-  international_students_percentage: number;
+  faculty_count: number;
+  programs_offered: string[];
+  facilities: string[];
+  image: string;
+  logo: string;
+  gallery: string[];
   campus_size: string;
+  campus_type: string;
+  accreditation: string;
   notable_alumni: string[];
+  slug: string;
+  keywords: string[];
+  status: string;
+  featured: boolean;
+  verified: boolean;
+  created_by: string;
   created_at: string;
   updated_at: string;
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://edusmart-server.vercel.app/api';
-
 const Universities: React.FC = () => {
   const [universities, setUniversities] = useState<University[]>([]);
+  const [countries, setCountries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCountry, setFilterCountry] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingUniversity, setEditingUniversity] = useState<University | null>(null);
+  const [viewingUniversity, setViewingUniversity] = useState<University | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [formData, setFormData] = useState({
     name: '',
+    description: '',
     country: '',
     city: '',
     state: '',
-    website_url: '',
-    logo_url: '',
-    description: '',
-    rankings: '',
-    acceptance_rate: '',
-    tuition_fees: '',
-    programs: '',
+    address: '',
+    website: '',
+    contact_email: '',
+    contact_phone: '',
     established_year: '',
+    type: '',
+    ranking: '',
+    tuition_fee: '',
+    application_fee: '',
+    acceptance_rate: '',
     student_population: '',
-    international_students_percentage: '',
+    faculty_count: '',
+    programs_offered: '',
+    facilities: '',
+    image: '',
+    logo: '',
     campus_size: '',
-    notable_alumni: ''
+    campus_type: '',
+    accreditation: '',
+    notable_alumni: '',
+    featured: false,
+    verified: false
   });
 
   const { enqueueSnackbar } = useSnackbar();
+  const adminUid = useAdminUID();
 
   useEffect(() => {
     fetchUniversities();
-  }, []);
+    fetchCountries();
+  }, [currentPage]);
 
   const fetchUniversities = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/universities`);
-      const data = await response.json();
+      setLoading(true);
+      const response = await universityAPI.getAll(currentPage, 10);
       
-      if (data.success) {
-        // Handle different possible data structures from the API
-        let universitiesData = data.data;
-        
-        // If data is an object with a universities property, use that
-        if (universitiesData && typeof universitiesData === 'object' && universitiesData.universities) {
-          universitiesData = universitiesData.universities;
-        }
-        
-        // Ensure we always set an array
-        setUniversities(Array.isArray(universitiesData) ? universitiesData : []);
+      if (response.success && response.data) {
+        const { universities: universitiesData, pagination } = response.data;
+        setUniversities(universitiesData || []);
+        setTotalPages(pagination?.totalPages || 1);
       } else {
         enqueueSnackbar('Failed to fetch universities', { variant: 'error' });
-        setUniversities([]); // Ensure universities is set to empty array on error
+        setUniversities([]);
       }
     } catch (error) {
       console.error('Error fetching universities:', error);
       enqueueSnackbar('Error fetching universities', { variant: 'error' });
-      setUniversities([]); // Ensure universities is set to empty array on error
+      setUniversities([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchCountries = async () => {
+    try {
+      const response = await universityAPI.getCountries();
+      if (response.success && response.data) {
+        setCountries(response.data.countries || []);
+      }
+    } catch (error) {
+      console.error('Error fetching countries:', error);
+    }
+  };
+
+  const validateForm = () => {
+    const errors: string[] = [];
+    
+    if (!formData.name.trim() || formData.name.length < 2) {
+      errors.push('University name must be at least 2 characters long');
+    }
+    
+    if (formData.description.trim() && formData.description.length < 10) {
+      errors.push('Description must be at least 10 characters long');
+    }
+    
+    if (!formData.country.trim()) {
+      errors.push('Country is required');
+    }
+    
+    if (!formData.city.trim()) {
+      errors.push('City is required');
+    }
+    
+    if (formData.website && !formData.website.match(/^https?:\/\/.+/)) {
+      errors.push('Website must be a valid URL starting with http:// or https://');
+    }
+    
+    if (formData.contact_email && !formData.contact_email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      errors.push('Contact email must be a valid email address');
+    }
+    
+    if (formData.established_year && (parseInt(formData.established_year) < 800 || parseInt(formData.established_year) > new Date().getFullYear())) {
+      errors.push('Established year must be between 800 and current year');
+    }
+    
+    if (formData.ranking && parseInt(formData.ranking) < 1) {
+      errors.push('Ranking must be a positive number');
+    }
+    
+    if (formData.tuition_fee && parseFloat(formData.tuition_fee) < 0) {
+      errors.push('Tuition fee cannot be negative');
+    }
+    
+    if (formData.acceptance_rate && (parseFloat(formData.acceptance_rate) < 0 || parseFloat(formData.acceptance_rate) > 100)) {
+      errors.push('Acceptance rate must be between 0 and 100');
+    }
+    
+    if (formData.student_population && parseInt(formData.student_population) < 1) {
+      errors.push('Student population must be a positive number');
+    }
+
+    return errors;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!adminUid) {
+      enqueueSnackbar('Admin authentication required', { variant: 'error' });
+      return;
+    }
+    
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      validationErrors.forEach(error => {
+        enqueueSnackbar(error, { variant: 'error' });
+      });
+      return;
+    }
+    
     try {
       const submitData = {
-        ...formData,
-        rankings: formData.rankings ? parseInt(formData.rankings) : null,
-        acceptance_rate: formData.acceptance_rate ? parseFloat(formData.acceptance_rate) : null,
-        established_year: formData.established_year ? parseInt(formData.established_year) : null,
-        student_population: formData.student_population ? parseInt(formData.student_population) : null,
-        international_students_percentage: formData.international_students_percentage ? parseFloat(formData.international_students_percentage) : null,
-        programs: formData.programs ? formData.programs.split(',').map(p => p.trim()) : [],
-        notable_alumni: formData.notable_alumni ? formData.notable_alumni.split(',').map(a => a.trim()) : []
+        name: formData.name.trim(),
+        description: formData.description.trim() || undefined,
+        country: formData.country.trim(),
+        city: formData.city.trim() || undefined,
+        state: formData.state.trim() || undefined,
+        address: formData.address.trim() || undefined,
+        website: formData.website.trim() || undefined,
+        contact_email: formData.contact_email.trim() || undefined,
+        contact_phone: formData.contact_phone.trim() || undefined,
+        established_year: formData.established_year ? parseInt(formData.established_year) : undefined,
+        type: formData.type.trim() || undefined,
+        ranking: formData.ranking ? parseInt(formData.ranking) : undefined,
+        tuition_fee: formData.tuition_fee ? parseFloat(formData.tuition_fee) : undefined,
+        application_fee: formData.application_fee ? parseFloat(formData.application_fee) : undefined,
+        acceptance_rate: formData.acceptance_rate ? parseFloat(formData.acceptance_rate) : undefined,
+        student_population: formData.student_population ? parseInt(formData.student_population) : undefined,
+        faculty_count: formData.faculty_count ? parseInt(formData.faculty_count) : undefined,
+        programs_offered: formData.programs_offered ? formData.programs_offered.split(',').map(p => p.trim()).filter(p => p) : [],
+        facilities: formData.facilities ? formData.facilities.split(',').map(f => f.trim()).filter(f => f) : [],
+        image: formData.image.trim() || undefined,
+        logo: formData.logo.trim() || undefined,
+        campus_size: formData.campus_size.trim() || undefined,
+        campus_type: formData.campus_type.trim() || undefined,
+        accreditation: formData.accreditation.trim() || undefined,
+        notable_alumni: formData.notable_alumni ? formData.notable_alumni.split(',').map(a => a.trim()).filter(a => a) : [],
+        featured: formData.featured,
+        verified: formData.verified
       };
 
-      const url = editingUniversity 
-        ? `${API_BASE_URL}/universities/${editingUniversity.id}`
-        : `${API_BASE_URL}/universities`;
-      
-      const method = editingUniversity ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(submitData),
-      });
+      let response;
+      if (editingUniversity) {
+        response = await universityAPI.update(editingUniversity.id, submitData, adminUid);
+      } else {
+        response = await universityAPI.create(submitData, adminUid);
+      }
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         enqueueSnackbar(
           editingUniversity ? 'University updated successfully' : 'University created successfully',
           { variant: 'success' }
@@ -146,7 +256,7 @@ const Universities: React.FC = () => {
         fetchUniversities();
         handleCloseModal();
       } else {
-        enqueueSnackbar(data.message || 'Operation failed', { variant: 'error' });
+        enqueueSnackbar(response.error || 'Operation failed', { variant: 'error' });
       }
     } catch (error) {
       console.error('Error saving university:', error);
@@ -159,18 +269,19 @@ const Universities: React.FC = () => {
       return;
     }
 
+    if (!adminUid) {
+      enqueueSnackbar('Admin authentication required', { variant: 'error' });
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/universities/${id}`, {
-        method: 'DELETE',
-      });
+      const response = await universityAPI.delete(id, adminUid);
 
-      const data = await response.json();
-
-      if (data.success) {
+      if (response.success) {
         enqueueSnackbar('University deleted successfully', { variant: 'success' });
         fetchUniversities();
       } else {
-        enqueueSnackbar(data.message || 'Failed to delete university', { variant: 'error' });
+        enqueueSnackbar(response.error || 'Failed to delete university', { variant: 'error' });
       }
     } catch (error) {
       console.error('Error deleting university:', error);
@@ -181,24 +292,45 @@ const Universities: React.FC = () => {
   const handleEdit = (university: University) => {
     setEditingUniversity(university);
     setFormData({
-      name: university.name,
-      country: university.country,
-      city: university.city,
-      state: university.state || '',
-      website_url: university.website_url || '',
-      logo_url: university.logo_url || '',
+      name: university.name || '',
       description: university.description || '',
-      rankings: university.rankings ? university.rankings.toString() : '',
-      acceptance_rate: university.acceptance_rate ? university.acceptance_rate.toString() : '',
-      tuition_fees: university.tuition_fees || '',
-      programs: university.programs ? university.programs.join(', ') : '',
+      country: university.country || '',
+      city: university.city || '',
+      state: university.state || '',
+      address: university.address || '',
+      website: university.website || '',
+      contact_email: university.contact_email || '',
+      contact_phone: university.contact_phone || '',
       established_year: university.established_year ? university.established_year.toString() : '',
+      type: university.type || '',
+      ranking: university.ranking ? university.ranking.toString() : '',
+      tuition_fee: university.tuition_fee ? university.tuition_fee.toString() : '',
+      application_fee: university.application_fee ? university.application_fee.toString() : '',
+      acceptance_rate: university.acceptance_rate ? university.acceptance_rate.toString() : '',
       student_population: university.student_population ? university.student_population.toString() : '',
-      international_students_percentage: university.international_students_percentage ? university.international_students_percentage.toString() : '',
+      faculty_count: university.faculty_count ? university.faculty_count.toString() : '',
+      programs_offered: university.programs_offered ? university.programs_offered.join(', ') : '',
+      facilities: university.facilities ? university.facilities.join(', ') : '',
+      image: university.image || '',
+      logo: university.logo || '',
       campus_size: university.campus_size || '',
-      notable_alumni: university.notable_alumni ? university.notable_alumni.join(', ') : ''
+      campus_type: university.campus_type || '',
+      accreditation: university.accreditation || '',
+      notable_alumni: university.notable_alumni ? university.notable_alumni.join(', ') : '',
+      featured: university.featured || false,
+      verified: university.verified || false
     });
     setIsModalOpen(true);
+  };
+
+  const handleView = (university: University) => {
+    setViewingUniversity(university);
+    setIsViewModalOpen(true);
+  };
+
+  const handleCloseViewModal = () => {
+    setIsViewModalOpen(false);
+    setViewingUniversity(null);
   };
 
   const handleCloseModal = () => {
@@ -206,21 +338,32 @@ const Universities: React.FC = () => {
     setEditingUniversity(null);
     setFormData({
       name: '',
+      description: '',
       country: '',
       city: '',
       state: '',
-      website_url: '',
-      logo_url: '',
-      description: '',
-      rankings: '',
-      acceptance_rate: '',
-      tuition_fees: '',
-      programs: '',
+      address: '',
+      website: '',
+      contact_email: '',
+      contact_phone: '',
       established_year: '',
+      type: '',
+      ranking: '',
+      tuition_fee: '',
+      application_fee: '',
+      acceptance_rate: '',
       student_population: '',
-      international_students_percentage: '',
+      faculty_count: '',
+      programs_offered: '',
+      facilities: '',
+      image: '',
+      logo: '',
       campus_size: '',
-      notable_alumni: ''
+      campus_type: '',
+      accreditation: '',
+      notable_alumni: '',
+      featured: false,
+      verified: false
     });
   };
 
@@ -416,28 +559,39 @@ const Universities: React.FC = () => {
               >
                 {/* University Logo/Header */}
                 <div className={`relative ${viewMode === 'grid' ? 'h-48' : 'w-48 h-32'}`}>
-                  {university.logo_url ? (
+                  {university.image || university.logo ? (
                     <img 
-                      src={university.logo_url} 
+                      src={university.image || university.logo} 
                       alt={university.name}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      onError={(e) => {
+                        // Fallback to logo if image fails, then to default
+                        const target = e.target as HTMLImageElement;
+                        if (target.src === university.image && university.logo) {
+                          target.src = university.logo;
+                        } else {
+                          target.style.display = 'none';
+                          target.nextElementSibling?.classList.remove('hidden');
+                        }
+                      }}
                     />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
-                      <IconWrapper icon={FaUniversity} className="text-white text-4xl" />
-                    </div>
-                  )}
+                  ) : null}
+                  
+                  {/* Fallback gradient background */}
+                  <div className={`w-full h-full bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center ${university.image || university.logo ? 'hidden' : ''}`}>
+                    <IconWrapper icon={FaUniversity} className="text-white text-4xl" />
+                  </div>
                   
                   {/* Ranking Badge */}
-                  {university.rankings && (
+                  {university.ranking && (
                     <div className="absolute top-3 left-3">
                       <span className="px-3 py-1 bg-yellow-500/90 text-white text-xs font-bold rounded-full backdrop-blur-md">
-                        #{university.rankings}
+                        #{university.ranking}
                       </span>
                     </div>
                   )}
 
-                  {/* Action Buttons */}
+                  {/* Edit/Delete Action Buttons */}
                   <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                     <motion.button
                       onClick={() => handleEdit(university)}
@@ -509,24 +663,14 @@ const Universities: React.FC = () => {
                           </div>
                         </div>
                       )}
-                      
-                      {university.international_students_percentage && (
-                        <div className="flex items-center gap-2 bg-purple-50 px-3 py-2 rounded-lg">
-                          <IconWrapper icon={FaGlobe} className="text-purple-600" />
-                          <div>
-                            <p className="text-xs text-purple-600 font-medium">International</p>
-                            <p className="text-sm font-bold text-purple-800">{university.international_students_percentage}%</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
 
                     {/* Programs */}
-                    {university.programs && university.programs.length > 0 && (
+                    {university.programs_offered && university.programs_offered.length > 0 && (
                       <div className="mb-4">
                         <p className="text-sm font-medium text-gray-700 mb-2">Popular Programs:</p>
                         <div className="flex flex-wrap gap-2">
-                          {university.programs.slice(0, 3).map((program, index) => (
+                          {university.programs_offered.slice(0, 3).map((program, index) => (
                             <span 
                               key={index}
                               className="px-2 py-1 bg-indigo-100 text-indigo-800 text-xs rounded-full font-medium"
@@ -534,9 +678,9 @@ const Universities: React.FC = () => {
                               {program}
                             </span>
                           ))}
-                          {university.programs.length > 3 && (
+                          {university.programs_offered.length > 3 && (
                             <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
-                              +{university.programs.length - 3} more
+                              +{university.programs_offered.length - 3} more
                             </span>
                           )}
                         </div>
@@ -544,20 +688,34 @@ const Universities: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Visit Website Button */}
-                  {university.website_url && (
-                    <motion.a
-                      href={university.website_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="w-full mt-4 px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
+                  {/* Action Buttons */}
+                  <div className="flex flex-col gap-3 mt-4">
+                    {/* Visit Website Button */}
+                    {university.website && (
+                      <motion.a
+                        href={university.website}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-xl hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <IconWrapper icon={FaGlobe} />
+                        Visit Website
+                      </motion.a>
+                    )}
+                    
+                    {/* View Details Button */}
+                    <motion.button
+                      onClick={() => handleView(university)}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white rounded-xl hover:from-blue-600 hover:to-cyan-600 transition-all duration-300 flex items-center justify-center gap-2 font-medium"
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <IconWrapper icon={FaGlobe} />
-                      Visit Website
-                    </motion.a>
-                  )}
+                      <IconWrapper icon={FaEye} />
+                      View Details
+                    </motion.button>
+                  </div>
                 </div>
               </motion.div>
             ))}
@@ -694,8 +852,8 @@ const Universities: React.FC = () => {
                         </label>
                         <input
                           type="url"
-                          value={formData.website_url}
-                          onChange={(e) => setFormData({ ...formData, website_url: e.target.value })}
+                          value={formData.website}
+                          onChange={(e) => setFormData({ ...formData, website: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                           placeholder="https://university.edu"
                         />
@@ -707,8 +865,8 @@ const Universities: React.FC = () => {
                         </label>
                         <input
                           type="url"
-                          value={formData.logo_url}
-                          onChange={(e) => setFormData({ ...formData, logo_url: e.target.value })}
+                          value={formData.logo}
+                          onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                           placeholder="https://example.com/logo.png"
                         />
@@ -720,8 +878,8 @@ const Universities: React.FC = () => {
                         </label>
                         <input
                           type="number"
-                          value={formData.rankings}
-                          onChange={(e) => setFormData({ ...formData, rankings: e.target.value })}
+                          value={formData.ranking}
+                          onChange={(e) => setFormData({ ...formData, ranking: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                           placeholder="e.g., 50"
                         />
@@ -769,15 +927,14 @@ const Universities: React.FC = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          International Students (%)
+                          Faculty Count
                         </label>
                         <input
                           type="number"
-                          step="0.1"
-                          value={formData.international_students_percentage}
-                          onChange={(e) => setFormData({ ...formData, international_students_percentage: e.target.value })}
+                          value={formData.faculty_count}
+                          onChange={(e) => setFormData({ ...formData, faculty_count: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                          placeholder="e.g., 25.5"
+                          placeholder="e.g., 2,500"
                         />
                       </div>
 
@@ -793,19 +950,6 @@ const Universities: React.FC = () => {
                           placeholder="e.g., 1,200 acres"
                         />
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Tuition Fees
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.tuition_fees}
-                        onChange={(e) => setFormData({ ...formData, tuition_fees: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                        placeholder="e.g., $50,000 per year"
-                      />
                     </div>
 
                     <div>
@@ -827,8 +971,8 @@ const Universities: React.FC = () => {
                       </label>
                       <textarea
                         rows={3}
-                        value={formData.programs}
-                        onChange={(e) => setFormData({ ...formData, programs: e.target.value })}
+                        value={formData.programs_offered}
+                        onChange={(e) => setFormData({ ...formData, programs_offered: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                         placeholder="Computer Science, Engineering, Medicine, Business..."
                       />
@@ -836,14 +980,38 @@ const Universities: React.FC = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Notable Alumni (comma-separated)
+                        Facilities (comma-separated)
                       </label>
                       <textarea
                         rows={2}
-                        value={formData.notable_alumni}
-                        onChange={(e) => setFormData({ ...formData, notable_alumni: e.target.value })}
+                        value={formData.facilities}
+                        onChange={(e) => setFormData({ ...formData, facilities: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                        placeholder="Famous graduates and their achievements..."
+                        placeholder="Sports facilities, library, student center..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Featured
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={formData.featured}
+                        onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Verified
+                      </label>
+                      <input
+                        type="checkbox"
+                        checked={formData.verified}
+                        onChange={(e) => setFormData({ ...formData, verified: e.target.checked })}
+                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                       />
                     </div>
 
@@ -868,6 +1036,306 @@ const Universities: React.FC = () => {
                       </motion.button>
                     </div>
                   </form>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* View University Modal */}
+        <AnimatePresence>
+          {isViewModalOpen && viewingUniversity && (
+            <motion.div 
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div 
+                className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50"
+                initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              >
+                <div className="p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                      University Details
+                    </h2>
+                    <motion.button
+                      onClick={handleCloseViewModal}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all duration-300"
+                      whileHover={{ scale: 1.1, rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      ✕
+                    </motion.button>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {/* University Header */}
+                    <div className="flex flex-col md:flex-row gap-6">
+                      <div className="w-full md:w-1/3">
+                        {viewingUniversity.image || viewingUniversity.logo ? (
+                          <img 
+                            src={viewingUniversity.image || viewingUniversity.logo} 
+                            alt={viewingUniversity.name}
+                            className="w-full h-48 object-cover rounded-xl"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (target.src === viewingUniversity.image && viewingUniversity.logo) {
+                                target.src = viewingUniversity.logo;
+                              } else {
+                                target.style.display = 'none';
+                                target.nextElementSibling?.classList.remove('hidden');
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div className={`w-full h-48 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl flex items-center justify-center ${viewingUniversity.image || viewingUniversity.logo ? 'hidden' : ''}`}>
+                          <IconWrapper icon={FaUniversity} className="text-white text-4xl" />
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1">
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{viewingUniversity.name}</h3>
+                        
+                        <div className="flex items-center gap-2 mb-4">
+                          <IconWrapper icon={FaMapMarkerAlt} className="text-purple-500" />
+                          <span className="text-gray-600">
+                            {viewingUniversity.city}, {viewingUniversity.country}
+                            {viewingUniversity.state && `, ${viewingUniversity.state}`}
+                          </span>
+                        </div>
+
+                        {viewingUniversity.ranking && (
+                          <div className="mb-4">
+                            <span className="px-3 py-1 bg-yellow-500 text-white text-sm font-bold rounded-full">
+                              World Ranking: #{viewingUniversity.ranking}
+                            </span>
+                          </div>
+                        )}
+
+                        {viewingUniversity.description && (
+                          <p className="text-gray-700 mb-4">{viewingUniversity.description}</p>
+                        )}
+
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {viewingUniversity.featured && (
+                            <span className="px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-full">Featured</span>
+                          )}
+                          {viewingUniversity.verified && (
+                            <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">Verified</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* University Stats Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {viewingUniversity.established_year && (
+                        <div className="bg-blue-50 p-4 rounded-xl">
+                          <div className="flex items-center gap-3 mb-2">
+                            <IconWrapper icon={FaCalendarAlt} className="text-blue-600" />
+                            <h4 className="font-semibold text-blue-800">Established</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-blue-900">{viewingUniversity.established_year}</p>
+                        </div>
+                      )}
+                      
+                      {viewingUniversity.student_population && (
+                        <div className="bg-green-50 p-4 rounded-xl">
+                          <div className="flex items-center gap-3 mb-2">
+                            <IconWrapper icon={FaUsers} className="text-green-600" />
+                            <h4 className="font-semibold text-green-800">Students</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-green-900">{viewingUniversity.student_population.toLocaleString()}</p>
+                        </div>
+                      )}
+                      
+                      {viewingUniversity.acceptance_rate && (
+                        <div className="bg-orange-50 p-4 rounded-xl">
+                          <div className="flex items-center gap-3 mb-2">
+                            <IconWrapper icon={FaChartLine} className="text-orange-600" />
+                            <h4 className="font-semibold text-orange-800">Acceptance Rate</h4>
+                          </div>
+                          <p className="text-2xl font-bold text-orange-900">{viewingUniversity.acceptance_rate}%</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Additional Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {/* Contact Information */}
+                      <div className="bg-gray-50 p-6 rounded-xl">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
+                        <div className="space-y-3">
+                          {viewingUniversity.website && (
+                            <div className="flex items-center gap-3">
+                              <IconWrapper icon={FaGlobe} className="text-purple-500" />
+                              <a 
+                                href={viewingUniversity.website} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-purple-600 hover:text-purple-800 underline"
+                              >
+                                Visit Website
+                              </a>
+                            </div>
+                          )}
+                          {viewingUniversity.contact_email && (
+                            <div className="flex items-center gap-3">
+                              <IconWrapper icon={FaGlobe} className="text-blue-500" />
+                              <span className="text-gray-700">{viewingUniversity.contact_email}</span>
+                            </div>
+                          )}
+                          {viewingUniversity.contact_phone && (
+                            <div className="flex items-center gap-3">
+                              <IconWrapper icon={FaGlobe} className="text-green-500" />
+                              <span className="text-gray-700">{viewingUniversity.contact_phone}</span>
+                            </div>
+                          )}
+                          {viewingUniversity.address && (
+                            <div className="flex items-start gap-3">
+                              <IconWrapper icon={FaMapMarkerAlt} className="text-red-500 mt-1" />
+                              <span className="text-gray-700">{viewingUniversity.address}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Academic Information */}
+                      <div className="bg-gray-50 p-6 rounded-xl">
+                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h4>
+                        <div className="space-y-3">
+                          {viewingUniversity.type && (
+                            <div>
+                              <span className="font-medium text-gray-700">Type: </span>
+                              <span className="text-gray-600">{viewingUniversity.type}</span>
+                            </div>
+                          )}
+                          {viewingUniversity.faculty_count && (
+                            <div>
+                              <span className="font-medium text-gray-700">Faculty: </span>
+                              <span className="text-gray-600">{viewingUniversity.faculty_count.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {viewingUniversity.campus_size && (
+                            <div>
+                              <span className="font-medium text-gray-700">Campus Size: </span>
+                              <span className="text-gray-600">{viewingUniversity.campus_size}</span>
+                            </div>
+                          )}
+                          {viewingUniversity.campus_type && (
+                            <div>
+                              <span className="font-medium text-gray-700">Campus Type: </span>
+                              <span className="text-gray-600">{viewingUniversity.campus_type}</span>
+                            </div>
+                          )}
+                          {viewingUniversity.accreditation && (
+                            <div>
+                              <span className="font-medium text-gray-700">Accreditation: </span>
+                              <span className="text-gray-600">{viewingUniversity.accreditation}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Programs Offered */}
+                    {viewingUniversity.programs_offered && viewingUniversity.programs_offered.length > 0 && (
+                      <div className="bg-indigo-50 p-6 rounded-xl">
+                        <h4 className="text-lg font-semibold text-indigo-900 mb-4">Programs Offered</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {viewingUniversity.programs_offered.map((program, index) => (
+                            <span 
+                              key={index}
+                              className="px-3 py-1 bg-indigo-200 text-indigo-800 text-sm rounded-full font-medium"
+                            >
+                              {program}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Facilities */}
+                    {viewingUniversity.facilities && viewingUniversity.facilities.length > 0 && (
+                      <div className="bg-green-50 p-6 rounded-xl">
+                        <h4 className="text-lg font-semibold text-green-900 mb-4">Facilities</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {viewingUniversity.facilities.map((facility, index) => (
+                            <span 
+                              key={index}
+                              className="px-3 py-1 bg-green-200 text-green-800 text-sm rounded-full font-medium"
+                            >
+                              {facility}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Notable Alumni */}
+                    {viewingUniversity.notable_alumni && viewingUniversity.notable_alumni.length > 0 && (
+                      <div className="bg-yellow-50 p-6 rounded-xl">
+                        <h4 className="text-lg font-semibold text-yellow-900 mb-4">Notable Alumni</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {viewingUniversity.notable_alumni.map((alumni, index) => (
+                            <span 
+                              key={index}
+                              className="px-3 py-1 bg-yellow-200 text-yellow-800 text-sm rounded-full font-medium"
+                            >
+                              {alumni}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Financial Information */}
+                    {(viewingUniversity.tuition_fee || viewingUniversity.application_fee) && (
+                      <div className="bg-purple-50 p-6 rounded-xl">
+                        <h4 className="text-lg font-semibold text-purple-900 mb-4">Financial Information</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {viewingUniversity.tuition_fee && (
+                            <div>
+                              <span className="font-medium text-purple-700">Tuition Fee: </span>
+                              <span className="text-purple-600">${viewingUniversity.tuition_fee.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {viewingUniversity.application_fee && (
+                            <div>
+                              <span className="font-medium text-purple-700">Application Fee: </span>
+                              <span className="text-purple-600">${viewingUniversity.application_fee.toLocaleString()}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                      <motion.button
+                        onClick={() => handleEdit(viewingUniversity)}
+                        className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all duration-300 flex items-center gap-2"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <IconWrapper icon={FaEdit} />
+                        Edit University
+                      </motion.button>
+                      <motion.button
+                        onClick={handleCloseViewModal}
+                        className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Close
+                      </motion.button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>

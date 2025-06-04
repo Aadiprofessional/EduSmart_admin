@@ -27,33 +27,36 @@ interface Blog {
   title: string;
   content: string;
   excerpt: string;
+  category: string;
+  tags: string[];
+  image: string;
   author_id: string;
-  author_name: string;
-  image_url: string;
-  is_published: boolean;
   created_at: string;
   updated_at: string;
-  slug: string;
-  tags: string[];
+  author?: {
+    name: string;
+    avatar_url?: string;
+  };
 }
 
 const Blogs: React.FC = () => {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [editingBlog, setEditingBlog] = useState<Blog | null>(null);
+  const [viewingBlog, setViewingBlog] = useState<Blog | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     excerpt: '',
-    author_name: '',
-    image_url: '',
-    is_published: false,
-    slug: '',
-    tags: ''
+    category: '',
+    tags: '',
+    image: ''
   });
 
   const { enqueueSnackbar } = useSnackbar();
@@ -61,17 +64,19 @@ const Blogs: React.FC = () => {
 
   useEffect(() => {
     fetchBlogs();
+    fetchCategories();
   }, []);
 
   const fetchBlogs = async () => {
     try {
+      setLoading(true);
       const response = await blogAPI.getAll();
       if (response.success) {
-        // Handle different possible data structures from the API
+        // Handle the API response structure
         let blogsData = response.data;
         
-        // If data is an object with a blogs property, use that
-        if (blogsData && typeof blogsData === 'object' && blogsData.blogs) {
+        // The API returns { blogs: [...], pagination: {...} }
+        if (blogsData && blogsData.blogs) {
           blogsData = blogsData.blogs;
         }
         
@@ -80,14 +85,25 @@ const Blogs: React.FC = () => {
       } else {
         console.error('Failed to fetch blogs:', response.error);
         enqueueSnackbar('Failed to fetch blogs', { variant: 'error' });
-        setBlogs([]); // Ensure blogs is set to empty array on error
+        setBlogs([]);
       }
     } catch (error) {
       console.error('Error fetching blogs:', error);
       enqueueSnackbar('Error fetching blogs', { variant: 'error' });
-      setBlogs([]); // Ensure blogs is set to empty array on error
+      setBlogs([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await blogAPI.getCategories();
+      if (response.success && response.data && response.data.categories) {
+        setCategories(response.data.categories);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
     }
   };
 
@@ -99,27 +115,96 @@ const Blogs: React.FC = () => {
       enqueueSnackbar('Admin UID not available', { variant: 'error' });
       return;
     }
+
+    // Client-side validation
+    const errors = [];
+    if (!formData.title || formData.title.length < 5 || formData.title.length > 200) {
+      errors.push('Title must be between 5 and 200 characters');
+    }
+    if (!formData.content || formData.content.length < 50) {
+      errors.push('Content must be at least 50 characters');
+    }
+    if (!formData.excerpt || formData.excerpt.trim() === '') {
+      errors.push('Excerpt is required');
+    }
+    if (!formData.category || formData.category.trim() === '') {
+      errors.push('Category is required');
+    }
+    if (formData.image && formData.image.trim() !== '') {
+      try {
+        new URL(formData.image);
+      } catch {
+        errors.push('Image must be a valid URL');
+      }
+    }
+
+    if (errors.length > 0) {
+      enqueueSnackbar(errors.join(', '), { variant: 'error' });
+      return;
+    }
     
     try {
       const submitData = {
-        ...formData,
-        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
-        slug: formData.slug || formData.title.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+        author_id: adminUID,
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        excerpt: formData.excerpt.trim(),
+        category: formData.category.trim(),
+        tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t.length > 0) : [],
+        image_url: formData.image.trim() || undefined,
+        is_published: true,
+        author_name: 'Admin'
       };
 
+      console.log('Submitting blog data:', submitData);
+      console.log('Admin UID:', adminUID);
+
+      let response;
       if (editingBlog) {
-        await blogAPI.update(editingBlog.id, submitData, adminUID);
-        enqueueSnackbar('Blog updated successfully', { variant: 'success' });
+        response = await blogAPI.update(editingBlog.id, submitData, adminUID);
       } else {
-        await blogAPI.create(submitData, adminUID);
-        enqueueSnackbar('Blog created successfully', { variant: 'success' });
+        response = await blogAPI.create(submitData, adminUID);
+      }
+
+      console.log('API Response:', response);
+
+      if (response.success) {
+        enqueueSnackbar(editingBlog ? 'Blog updated successfully' : 'Blog created successfully', { variant: 'success' });
+        fetchBlogs();
+        fetchCategories(); // Refresh categories in case a new one was added
+        handleCloseModal();
+      } else {
+        // Handle server validation errors more gracefully
+        console.error('Server validation error:', response);
+        console.error('Error details:', response.details);
+        
+        let errorMessage = 'Failed to save blog';
+        if (response.error) {
+          errorMessage = response.error;
+        }
+        
+        // If there are detailed validation errors, show them
+        if (response.details && response.details.errors && Array.isArray(response.details.errors)) {
+          console.error('Validation errors array:', response.details.errors);
+          errorMessage = `Validation errors: ${response.details.errors.join(', ')}`;
+        }
+        
+        enqueueSnackbar(errorMessage, { variant: 'error' });
+      }
+    } catch (error: any) {
+      console.error('Error saving blog:', error);
+      
+      // Extract more detailed error information
+      let errorMessage = 'Error saving blog';
+      if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error.message) {
+        errorMessage = error.message;
+      } else if (error.error) {
+        errorMessage = error.error;
       }
       
-      fetchBlogs();
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error saving blog:', error);
-      enqueueSnackbar('Error saving blog', { variant: 'error' });
+      enqueueSnackbar(errorMessage, { variant: 'error' });
     }
   };
 
@@ -135,12 +220,16 @@ const Blogs: React.FC = () => {
     }
 
     try {
-      await blogAPI.delete(id, adminUID);
-      enqueueSnackbar('Blog deleted successfully', { variant: 'success' });
-      fetchBlogs();
-    } catch (error) {
+      const response = await blogAPI.delete(id, adminUID);
+      if (response.success) {
+        enqueueSnackbar('Blog deleted successfully', { variant: 'success' });
+        fetchBlogs();
+      } else {
+        throw new Error(response.error || 'Failed to delete blog');
+      }
+    } catch (error: any) {
       console.error('Error deleting blog:', error);
-      enqueueSnackbar('Error deleting blog', { variant: 'error' });
+      enqueueSnackbar(error.message || 'Error deleting blog', { variant: 'error' });
     }
   };
 
@@ -150,13 +239,17 @@ const Blogs: React.FC = () => {
       title: blog.title,
       content: blog.content,
       excerpt: blog.excerpt,
-      author_name: blog.author_name,
-      image_url: blog.image_url,
-      is_published: blog.is_published,
-      slug: blog.slug,
-      tags: blog.tags?.join(', ') || ''
+      category: blog.category,
+      tags: blog.tags?.join(', ') || '',
+      image: blog.image || ''
     });
+    setIsViewModalOpen(false);
     setIsModalOpen(true);
+  };
+
+  const handleView = (blog: Blog) => {
+    setViewingBlog(blog);
+    setIsViewModalOpen(true);
   };
 
   const handleCloseModal = () => {
@@ -166,24 +259,32 @@ const Blogs: React.FC = () => {
       title: '',
       content: '',
       excerpt: '',
-      author_name: '',
-      image_url: '',
-      is_published: false,
-      slug: '',
-      tags: ''
+      category: '',
+      tags: '',
+      image: ''
     });
+  };
+
+  const handleCloseViewModal = () => {
+    setIsViewModalOpen(false);
+    setViewingBlog(null);
+  };
+
+  // Helper function to truncate text
+  const truncateText = (text: string, maxWords: number) => {
+    const words = text.split(' ');
+    if (words.length <= maxWords) return text;
+    return words.slice(0, maxWords).join(' ') + '...';
   };
 
   const filteredBlogs = Array.isArray(blogs) ? blogs.filter(blog => {
     const matchesSearch = blog.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         blog.author_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         blog.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
+                         blog.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (blog.author?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     
-    const matchesStatus = !filterStatus || 
-                         (filterStatus === 'published' && blog.is_published) ||
-                         (filterStatus === 'draft' && !blog.is_published);
+    const matchesCategory = !filterCategory || blog.category === filterCategory;
 
-    return matchesSearch && matchesStatus;
+    return matchesSearch && matchesCategory;
   }) : [];
 
   const containerVariants = {
@@ -296,13 +397,14 @@ const Blogs: React.FC = () => {
             </div>
             
             <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
               className="px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm"
             >
-              <option value="">All Status</option>
-              <option value="published">Published</option>
-              <option value="draft">Draft</option>
+              <option value="">All Categories</option>
+              {categories.map((category, index) => (
+                <option key={index} value={category}>{category}</option>
+              ))}
             </select>
 
             <div className="flex gap-2">
@@ -331,7 +433,7 @@ const Blogs: React.FC = () => {
             <button
               onClick={() => {
                 setSearchTerm('');
-                setFilterStatus('');
+                setFilterCategory('');
               }}
               className="px-4 py-3 bg-gradient-to-r from-gray-100 to-gray-200 text-gray-700 rounded-xl hover:from-gray-200 hover:to-gray-300 transition-all duration-300"
             >
@@ -369,9 +471,9 @@ const Blogs: React.FC = () => {
                 <div className={`relative overflow-hidden ${
                   viewMode === 'grid' ? 'h-48' : 'w-48 h-32'
                 }`}>
-                  {blog.image_url ? (
+                  {blog.image ? (
                     <img 
-                      src={blog.image_url} 
+                      src={blog.image} 
                       alt={blog.title}
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
@@ -381,14 +483,10 @@ const Blogs: React.FC = () => {
                     </div>
                   )}
                   
-                  {/* Status Badge */}
+                  {/* Category Badge */}
                   <div className="absolute top-3 left-3">
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md ${
-                      blog.is_published 
-                        ? 'bg-green-500/80 text-white' 
-                        : 'bg-orange-500/80 text-white'
-                    }`}>
-                      {blog.is_published ? 'Published' : 'Draft'}
+                    <span className="px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md bg-blue-500/80 text-white">
+                      {blog.category}
                     </span>
                   </div>
 
@@ -421,14 +519,14 @@ const Blogs: React.FC = () => {
                     </h3>
                     
                     <p className="text-gray-600 mb-4 line-clamp-3">
-                      {blog.excerpt}
+                      {truncateText(blog.excerpt, 20)}
                     </p>
 
                     {/* Meta Information */}
                     <div className="space-y-2 text-sm text-gray-500 mb-4">
                       <div className="flex items-center gap-2">
                         <IconWrapper icon={FaUser} className="text-blue-500" />
-                        <span>{blog.author_name}</span>
+                        <span>{blog.author?.name || 'Unknown Author'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <IconWrapper icon={FaCalendarAlt} className="text-green-500" />
@@ -461,9 +559,10 @@ const Blogs: React.FC = () => {
                     className="w-full mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 flex items-center justify-center gap-2"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    onClick={() => handleView(blog)}
                   >
                     <IconWrapper icon={FaEye} />
-                    Read More
+                    View Details
                   </motion.button>
                 </div>
               </motion.div>
@@ -493,7 +592,7 @@ const Blogs: React.FC = () => {
             </motion.div>
             <h3 className="text-2xl font-bold text-gray-900 mb-2">No blog posts found</h3>
             <p className="text-gray-600 mb-6">
-              {searchTerm || filterStatus ? 'Try adjusting your filters' : 'Get started by creating your first blog post'}
+              {searchTerm || filterCategory ? 'Try adjusting your filters' : 'Get started by creating your first blog post'}
             </p>
             <motion.button
               onClick={() => setIsModalOpen(true)}
@@ -542,42 +641,59 @@ const Blogs: React.FC = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Title *
+                          Title * <span className="text-xs text-gray-500">({formData.title.length}/200 characters)</span>
                         </label>
                         <input
                           type="text"
                           required
                           value={formData.title}
                           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                          placeholder="Enter blog title..."
+                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 ${
+                            formData.title.length > 0 && (formData.title.length < 5 || formData.title.length > 200)
+                              ? 'border-red-300 focus:ring-red-500'
+                              : 'border-gray-300/50'
+                          }`}
+                          placeholder="Enter blog title (5-200 characters)..."
                         />
+                        {formData.title.length > 0 && (formData.title.length < 5 || formData.title.length > 200) && (
+                          <p className="text-red-500 text-xs mt-1">Title must be between 5 and 200 characters</p>
+                        )}
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Author Name *
+                          Category *
                         </label>
-                        <input
-                          type="text"
+                        <select
                           required
-                          value={formData.author_name}
-                          onChange={(e) => setFormData({ ...formData, author_name: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                          placeholder="Enter author name..."
-                        />
+                          value={formData.category}
+                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 ${
+                            formData.category === '' ? 'border-red-300 focus:ring-red-500' : 'border-gray-300/50'
+                          }`}
+                        >
+                          <option value="">Select a category</option>
+                          {categories.map((category, index) => (
+                            <option key={index} value={category}>{category}</option>
+                          ))}
+                          <option value="Technology">Technology</option>
+                          <option value="Education">Education</option>
+                          <option value="Programming">Programming</option>
+                          <option value="Career">Career</option>
+                          <option value="Study Tips">Study Tips</option>
+                        </select>
                       </div>
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Slug
+                          Custom Category (if not in list)
                         </label>
                         <input
                           type="text"
-                          value={formData.slug}
-                          onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                          value={formData.category}
+                          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                          placeholder="Auto-generated from title..."
+                          placeholder="Enter custom category..."
                         />
                       </div>
 
@@ -587,40 +703,61 @@ const Blogs: React.FC = () => {
                         </label>
                         <input
                           type="url"
-                          value={formData.image_url}
-                          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                          placeholder="https://example.com/image.jpg"
+                          value={formData.image}
+                          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 ${
+                            formData.image && formData.image.trim() !== '' && (() => {
+                              try { new URL(formData.image); return false; } catch { return true; }
+                            })() ? 'border-red-300 focus:ring-red-500' : 'border-gray-300/50'
+                          }`}
+                          placeholder="https://example.com/image.jpg (optional)"
                         />
+                        {formData.image && formData.image.trim() !== '' && (() => {
+                          try { new URL(formData.image); return false; } catch { return true; }
+                        })() && (
+                          <p className="text-red-500 text-xs mt-1">Please enter a valid URL</p>
+                        )}
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Excerpt *
+                        Excerpt * <span className="text-xs text-gray-500">(Brief description)</span>
                       </label>
                       <textarea
                         required
                         rows={3}
                         value={formData.excerpt}
                         onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 ${
+                          formData.excerpt.trim() === '' ? 'border-red-300 focus:ring-red-500' : 'border-gray-300/50'
+                        }`}
                         placeholder="Brief description of the blog post..."
                       />
+                      {formData.excerpt.trim() === '' && (
+                        <p className="text-red-500 text-xs mt-1">Excerpt is required</p>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Content *
+                        Content * <span className="text-xs text-gray-500">({formData.content.length} characters, minimum 50)</span>
                       </label>
                       <textarea
                         required
                         rows={8}
                         value={formData.content}
                         onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                        placeholder="Write your blog content here..."
+                        className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 ${
+                          formData.content.length > 0 && formData.content.length < 50
+                            ? 'border-red-300 focus:ring-red-500'
+                            : 'border-gray-300/50'
+                        }`}
+                        placeholder="Write your blog content here (minimum 50 characters)..."
                       />
+                      {formData.content.length > 0 && formData.content.length < 50 && (
+                        <p className="text-red-500 text-xs mt-1">Content must be at least 50 characters (currently {formData.content.length})</p>
+                      )}
                     </div>
 
                     <div>
@@ -634,19 +771,6 @@ const Blogs: React.FC = () => {
                         className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
                         placeholder="education, technology, tips, etc."
                       />
-                    </div>
-
-                    <div className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id="is_published"
-                        checked={formData.is_published}
-                        onChange={(e) => setFormData({ ...formData, is_published: e.target.checked })}
-                        className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <label htmlFor="is_published" className="ml-3 text-sm font-medium text-gray-700">
-                        Publish immediately
-                      </label>
                     </div>
 
                     <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
@@ -670,6 +794,127 @@ const Blogs: React.FC = () => {
                       </motion.button>
                     </div>
                   </form>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* View Modal */}
+        <AnimatePresence>
+          {isViewModalOpen && (
+            <motion.div 
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div 
+                className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50"
+                initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              >
+                <div className="p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      {viewingBlog?.title}
+                    </h2>
+                    <motion.button
+                      onClick={handleCloseViewModal}
+                      className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all duration-300"
+                      whileHover={{ scale: 1.1, rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      ✕
+                    </motion.button>
+                  </div>
+                  
+                  <div className="space-y-6">
+                    {/* Featured Image */}
+                    {viewingBlog?.image && (
+                      <div className="mb-6">
+                        <img 
+                          src={viewingBlog.image} 
+                          alt={viewingBlog.title}
+                          className="w-full h-64 object-cover rounded-lg"
+                        />
+                      </div>
+                    )}
+
+                    {/* Meta Information */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 p-4 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <IconWrapper icon={FaUser} className="text-blue-500" />
+                        <span className="text-sm text-gray-700">{viewingBlog?.author?.name || 'Unknown Author'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <IconWrapper icon={FaCalendarAlt} className="text-green-500" />
+                        <span className="text-sm text-gray-700">{viewingBlog?.created_at ? new Date(viewingBlog.created_at).toLocaleDateString() : 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <IconWrapper icon={FaTags} className="text-purple-500" />
+                        <span className="text-sm text-gray-700">{viewingBlog?.category || 'Uncategorized'}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-lg font-semibold text-gray-800 mb-3">
+                        Excerpt
+                      </label>
+                      <div className="text-gray-600 mb-6 p-4 bg-blue-50 rounded-lg border-l-4 border-blue-500">
+                        {viewingBlog?.excerpt || 'No excerpt available'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-lg font-semibold text-gray-800 mb-3">
+                        Full Content
+                      </label>
+                      <div className="text-gray-700 leading-relaxed whitespace-pre-wrap p-4 bg-gray-50 rounded-lg max-h-96 overflow-y-auto">
+                        {viewingBlog?.content || 'No content available'}
+                      </div>
+                    </div>
+
+                    {viewingBlog?.tags && viewingBlog.tags.length > 0 && (
+                      <div>
+                        <label className="block text-lg font-semibold text-gray-800 mb-3">
+                          Tags
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {viewingBlog.tags.map((tag, tagIndex) => (
+                            <span 
+                              key={tagIndex}
+                              className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                      <motion.button
+                        onClick={() => handleEdit(viewingBlog!)}
+                        className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all duration-300 flex items-center gap-2"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <IconWrapper icon={FaEdit} />
+                        Edit Blog
+                      </motion.button>
+                      <motion.button
+                        onClick={handleCloseViewModal}
+                        className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        Close
+                      </motion.button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             </motion.div>

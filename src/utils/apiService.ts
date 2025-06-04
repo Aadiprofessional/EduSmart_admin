@@ -19,7 +19,8 @@ const apiCall = async (method: string, endpoint: string, data: any = null, admin
     };
 
     console.log(`Making ${method} request to ${BASE_URL}${endpoint}`);
-    console.log('Request config:', { method, url: config.url, hasData: !!data });
+    console.log('Request config:', { method, url: config.url, hasData: !!data, dataKeys: data ? Object.keys(data) : [] });
+    console.log('Full request data:', data);
     
     const response = await axios(config);
     return { success: true, data: response.data };
@@ -50,10 +51,34 @@ const apiCall = async (method: string, endpoint: string, data: any = null, admin
       };
     }
     
+    // Extract meaningful error message from API response
+    let errorMessage = error.message;
+    if (error.response?.data) {
+      const responseData = error.response.data;
+      
+      // Handle validation errors array
+      if (responseData.errors && Array.isArray(responseData.errors)) {
+        errorMessage = responseData.errors.join(', ');
+      }
+      // Handle single error message
+      else if (responseData.error) {
+        errorMessage = responseData.error;
+      }
+      // Handle message field
+      else if (responseData.message) {
+        errorMessage = responseData.message;
+      }
+      // Handle string response
+      else if (typeof responseData === 'string') {
+        errorMessage = responseData;
+      }
+    }
+    
     return { 
       success: false, 
-      error: error.response?.data || error.message,
-      status: error.response?.status 
+      error: errorMessage,
+      status: error.response?.status,
+      details: error.response?.data
     };
   }
 };
@@ -74,17 +99,21 @@ export const blogAPI = {
 
   // Create blog (admin only)
   create: async (blogData: any, adminUid: string) => {
-    return apiCall('POST', '/api/blogs', { ...blogData, uid: adminUid });
+    // Use author_id instead of uid to match the Blog type
+    const dataToSend = blogData.author_id ? blogData : { ...blogData, author_id: adminUid };
+    return apiCall('POST', '/api/blogs', dataToSend);
   },
 
   // Update blog (admin only)
   update: async (id: string, blogData: any, adminUid: string) => {
-    return apiCall('PUT', `/api/blogs/${id}`, { ...blogData, uid: adminUid });
+    // Use author_id instead of uid to match the Blog type
+    const dataToSend = blogData.author_id ? blogData : { ...blogData, author_id: adminUid };
+    return apiCall('PUT', `/api/blogs/${id}`, dataToSend);
   },
 
   // Delete blog (admin only)
   delete: async (id: string, adminUid: string) => {
-    return apiCall('DELETE', `/api/blogs/${id}`, { uid: adminUid });
+    return apiCall('DELETE', `/api/blogs/${id}`, { author_id: adminUid });
   },
 
   // Get blog categories (public)
@@ -125,6 +154,11 @@ export const scholarshipAPI = {
   // Get scholarship countries (public)
   getCountries: async () => {
     return apiCall('GET', '/api/scholarship-countries');
+  },
+
+  // Get scholarship universities (public)
+  getUniversities: async () => {
+    return apiCall('GET', '/api/scholarship-universities');
   }
 };
 
@@ -185,6 +219,11 @@ export const universityAPI = {
   // Delete university (admin only)
   delete: async (id: string, adminUid: string) => {
     return apiCall('DELETE', `/api/universities/${id}`, { uid: adminUid });
+  },
+
+  // Get university countries (public)
+  getCountries: async () => {
+    return apiCall('GET', '/api/universities/countries');
   }
 };
 

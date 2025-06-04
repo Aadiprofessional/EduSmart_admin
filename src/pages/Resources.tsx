@@ -31,76 +31,148 @@ interface Resource {
   id: string;
   title: string;
   description: string;
-  type: 'document' | 'video' | 'image' | 'tool' | 'link';
-  category: string;
-  url: string;
+  type: 'guide' | 'template' | 'checklist' | 'video' | 'webinar' | 'ebook';
+  category: 'application' | 'study' | 'test-prep' | 'career';
+  url?: string;
   file_size?: string;
+  thumbnail?: string;
+  download_link?: string;
+  video_link?: string;
   downloads: number;
-  is_featured: boolean;
+  featured: boolean;
+  tags: string[];
   created_at: string;
   updated_at: string;
-  author: string;
-  tags: string[];
+  created_by: string;
 }
 
+const ADMIN_UID = 'bca2f806-29c5-4be9-bc2d-a484671546cd';
+
 const Resources: React.FC = () => {
-  const [resources, setResources] = useState<Resource[]>([
-    {
-      id: '1',
-      title: 'Complete React Development Guide',
-      description: 'Comprehensive guide covering React fundamentals, hooks, and advanced patterns',
-      type: 'document',
-      category: 'Programming',
-      url: '/resources/react-guide.pdf',
-      file_size: '2.5 MB',
-      downloads: 1250,
-      is_featured: true,
-      created_at: '2024-01-15',
-      updated_at: '2024-01-15',
-      author: 'John Doe',
-      tags: ['React', 'JavaScript', 'Frontend']
-    },
-    {
-      id: '2',
-      title: 'Machine Learning Fundamentals',
-      description: 'Video series explaining core ML concepts and algorithms',
-      type: 'video',
-      category: 'Data Science',
-      url: 'https://youtube.com/watch?v=example',
-      downloads: 890,
-      is_featured: false,
-      created_at: '2024-01-10',
-      updated_at: '2024-01-10',
-      author: 'Jane Smith',
-      tags: ['Machine Learning', 'AI', 'Python']
-    },
-    {
-      id: '3',
-      title: 'Design System Templates',
-      description: 'Collection of modern UI components and design patterns',
-      type: 'tool',
-      category: 'Design',
-      url: '/resources/design-system.zip',
-      file_size: '15.2 MB',
-      downloads: 567,
-      is_featured: true,
-      created_at: '2024-01-08',
-      updated_at: '2024-01-08',
-      author: 'Alex Johnson',
-      tags: ['Design', 'UI/UX', 'Templates']
-    }
-  ]);
-  
-  const [loading, setLoading] = useState(false);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
   const [actionType, setActionType] = useState<'delete' | 'feature' | 'unfeature'>('delete');
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    type: 'guide' as Resource['type'],
+    category: 'application' as Resource['category'],
+    url: '',
+    file_size: '',
+    thumbnail: '',
+    download_link: '',
+    video_link: '',
+    featured: false,
+    tags: [] as string[]
+  });
 
   const { enqueueSnackbar } = useSnackbar();
+
+  // Fetch resources from API
+  const fetchResources = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:8000/api/responses');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setResources(data.responses || []);
+      } else {
+        throw new Error(data.error || 'Failed to fetch resources');
+      }
+    } catch (error) {
+      console.error('Error fetching resources:', error);
+      enqueueSnackbar('Failed to fetch resources', { variant: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch categories from API
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/response-categories');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  // Fetch types from API
+  const fetchTypes = async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/response-types');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setTypes(data.types || []);
+      }
+    } catch (error) {
+      console.error('Error fetching types:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchResources();
+    fetchCategories();
+    fetchTypes();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      const url = selectedResource 
+        ? `http://edusmart-server.vercel.app/api/responses/${selectedResource.id}`
+        : 'http://edusmart-server.vercel.app/api/responses';
+      
+      const method = selectedResource ? 'PUT' : 'POST';
+      
+      const payload = {
+        uid: ADMIN_UID,
+        ...formData,
+        tags: Array.isArray(formData.tags) ? formData.tags : []
+      };
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        enqueueSnackbar(
+          selectedResource ? 'Resource updated successfully' : 'Resource created successfully',
+          { variant: 'success' }
+        );
+        setShowFormModal(false);
+        resetForm();
+        fetchResources();
+      } else {
+        throw new Error(data.error || 'Failed to save resource');
+      }
+    } catch (error) {
+      console.error('Error saving resource:', error);
+      enqueueSnackbar('Failed to save resource', { variant: 'error' });
+    }
+  };
 
   const handleAction = async () => {
     if (!selectedResource) return;
@@ -108,20 +180,45 @@ const Resources: React.FC = () => {
     try {
       switch (actionType) {
         case 'delete':
-          setResources(prev => prev.filter(r => r.id !== selectedResource.id));
-          enqueueSnackbar('Resource deleted successfully', { variant: 'success' });
+          const deleteResponse = await fetch(`http://localhost:8000/api/responses/${selectedResource.id}`, {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ uid: ADMIN_UID }),
+          });
+
+          if (deleteResponse.ok) {
+            enqueueSnackbar('Resource deleted successfully', { variant: 'success' });
+            fetchResources();
+          } else {
+            throw new Error('Failed to delete resource');
+          }
           break;
+          
         case 'feature':
-          setResources(prev => prev.map(r => 
-            r.id === selectedResource.id ? { ...r, is_featured: true } : r
-          ));
-          enqueueSnackbar('Resource marked as featured', { variant: 'success' });
-          break;
         case 'unfeature':
-          setResources(prev => prev.map(r => 
-            r.id === selectedResource.id ? { ...r, is_featured: false } : r
-          ));
-          enqueueSnackbar('Resource removed from featured', { variant: 'success' });
+          const updateResponse = await fetch(`http://localhost:8000/api/responses/${selectedResource.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              uid: ADMIN_UID,
+              ...selectedResource,
+              featured: actionType === 'feature'
+            }),
+          });
+
+          if (updateResponse.ok) {
+            enqueueSnackbar(
+              actionType === 'feature' ? 'Resource marked as featured' : 'Resource removed from featured',
+              { variant: 'success' }
+            );
+            fetchResources();
+          } else {
+            throw new Error('Failed to update resource');
+          }
           break;
       }
       setShowConfirmModal(false);
@@ -129,6 +226,45 @@ const Resources: React.FC = () => {
       console.error('Error performing action:', error);
       enqueueSnackbar('Error performing action', { variant: 'error' });
     }
+  };
+
+  const openFormModal = (resource?: Resource) => {
+    if (resource) {
+      setSelectedResource(resource);
+      setFormData({
+        title: resource.title,
+        description: resource.description,
+        type: resource.type,
+        category: resource.category,
+        url: resource.url || '',
+        file_size: resource.file_size || '',
+        thumbnail: resource.thumbnail || '',
+        download_link: resource.download_link || '',
+        video_link: resource.video_link || '',
+        featured: resource.featured,
+        tags: resource.tags || []
+      });
+    } else {
+      resetForm();
+    }
+    setShowFormModal(true);
+  };
+
+  const resetForm = () => {
+    setSelectedResource(null);
+    setFormData({
+      title: '',
+      description: '',
+      type: 'guide',
+      category: 'application',
+      url: '',
+      file_size: '',
+      thumbnail: '',
+      download_link: '',
+      video_link: '',
+      featured: false,
+      tags: []
+    });
   };
 
   const openConfirmModal = (resource: Resource, action: 'delete' | 'feature' | 'unfeature') => {
@@ -139,22 +275,24 @@ const Resources: React.FC = () => {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'document': return FaFileAlt;
+      case 'guide': return FaBook;
+      case 'template': return FaFileAlt;
+      case 'checklist': return FaFileAlt;
       case 'video': return FaVideo;
-      case 'image': return FaImage;
-      case 'tool': return FaTools;
-      case 'link': return FaExternalLinkAlt;
+      case 'webinar': return FaVideo;
+      case 'ebook': return FaBook;
       default: return FaFileAlt;
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'document': return 'from-blue-400 to-blue-600';
+      case 'guide': return 'from-blue-400 to-blue-600';
+      case 'template': return 'from-green-400 to-green-600';
+      case 'checklist': return 'from-yellow-400 to-yellow-600';
       case 'video': return 'from-red-400 to-red-600';
-      case 'image': return 'from-green-400 to-green-600';
-      case 'tool': return 'from-purple-400 to-purple-600';
-      case 'link': return 'from-orange-400 to-orange-600';
+      case 'webinar': return 'from-purple-400 to-purple-600';
+      case 'ebook': return 'from-indigo-400 to-indigo-600';
       default: return 'from-gray-400 to-gray-600';
     }
   };
@@ -162,7 +300,6 @@ const Resources: React.FC = () => {
   const filteredResources = Array.isArray(resources) ? resources.filter(resource => {
     const matchesSearch = resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          resource.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         resource.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          resource.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesType = !filterType || resource.type === filterType;
@@ -170,9 +307,6 @@ const Resources: React.FC = () => {
 
     return matchesSearch && matchesType && matchesCategory;
   }) : [];
-
-  const uniqueTypes = Array.from(new Set(Array.isArray(resources) ? resources.map(r => r.type) : []));
-  const uniqueCategories = Array.from(new Set(Array.isArray(resources) ? resources.map(r => r.category) : []));
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -204,6 +338,29 @@ const Resources: React.FC = () => {
         animate="visible"
         variants={containerVariants}
       >
+        {/* Header */}
+        <motion.div 
+          className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Resource Management</h1>
+            <p className="text-gray-600">Manage and organize your educational resources</p>
+          </div>
+          
+          <motion.button
+            onClick={() => openFormModal()}
+            className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 flex items-center gap-2 font-medium shadow-lg"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <IconWrapper icon={FaPlus} />
+            Add New Resource
+          </motion.button>
+        </motion.div>
+
         {/* Futuristic Header */}
         <motion.div 
           className="relative overflow-hidden bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-8 text-white"
@@ -279,7 +436,7 @@ const Resources: React.FC = () => {
               className="px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white/70 backdrop-blur-sm"
             >
               <option value="">All Types</option>
-              {uniqueTypes.map(type => (
+              {types.map(type => (
                 <option key={type} value={type}>{type.charAt(0).toUpperCase() + type.slice(1)}</option>
               ))}
             </select>
@@ -290,8 +447,8 @@ const Resources: React.FC = () => {
               className="px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent bg-white/70 backdrop-blur-sm"
             >
               <option value="">All Categories</option>
-              {uniqueCategories.map(category => (
-                <option key={category} value={category}>{category}</option>
+              {categories.map(category => (
+                <option key={category} value={category}>{category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}</option>
               ))}
             </select>
 
@@ -361,7 +518,7 @@ const Resources: React.FC = () => {
                   </div>
                   
                   {/* Featured Badge */}
-                  {resource.is_featured && (
+                  {resource.featured && (
                     <div className="absolute top-3 left-3">
                       <span className="px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-xs font-bold rounded-full backdrop-blur-md flex items-center gap-1">
                         <IconWrapper icon={FaStar} />
@@ -381,6 +538,7 @@ const Resources: React.FC = () => {
                       <IconWrapper icon={FaDownload} />
                     </motion.button>
                     <motion.button
+                      onClick={() => openFormModal(resource)}
                       className="p-2 bg-green-500/80 text-white rounded-full hover:bg-green-600/80 backdrop-blur-md"
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
@@ -389,11 +547,11 @@ const Resources: React.FC = () => {
                       <IconWrapper icon={FaEdit} />
                     </motion.button>
                     <motion.button
-                      onClick={() => openConfirmModal(resource, resource.is_featured ? 'unfeature' : 'feature')}
+                      onClick={() => openConfirmModal(resource, resource.featured ? 'unfeature' : 'feature')}
                       className="p-2 bg-yellow-500/80 text-white rounded-full hover:bg-yellow-600/80 backdrop-blur-md"
                       whileHover={{ scale: 1.1 }}
                       whileTap={{ scale: 0.9 }}
-                      title={resource.is_featured ? 'Remove from Featured' : 'Mark as Featured'}
+                      title={resource.featured ? 'Remove from Featured' : 'Mark as Featured'}
                     >
                       <IconWrapper icon={FaStar} />
                     </motion.button>
@@ -418,7 +576,7 @@ const Resources: React.FC = () => {
                     
                     <div className="flex items-center gap-2 mb-3">
                       <IconWrapper icon={FaUser} className="text-emerald-500" />
-                      <span className="text-gray-600 text-sm">By {resource.author}</span>
+                      <span className="text-gray-600 text-sm">By {resource.created_by}</span>
                     </div>
 
                     <p className="text-gray-700 mb-4 line-clamp-3">
@@ -517,6 +675,7 @@ const Resources: React.FC = () => {
               {searchTerm || filterType || filterCategory ? 'Try adjusting your filters' : 'Get started by adding your first resource'}
             </p>
             <motion.button
+              onClick={() => openFormModal()}
               className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all duration-300 flex items-center gap-2 mx-auto"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -526,6 +685,209 @@ const Resources: React.FC = () => {
             </motion.button>
           </motion.div>
         )}
+
+        {/* Form Modal */}
+        <AnimatePresence>
+          {showFormModal && (
+            <motion.div 
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <motion.div 
+                className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl border border-gray-200/50"
+                initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 50 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {selectedResource ? 'Edit Resource' : 'Add New Resource'}
+                  </h2>
+                  <button
+                    onClick={() => setShowFormModal(false)}
+                    className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Title *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.title}
+                        onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Type *
+                      </label>
+                      <select
+                        value={formData.type}
+                        onChange={(e) => setFormData({ ...formData, type: e.target.value as Resource['type'] })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        required
+                      >
+                        {types.map(type => (
+                          <option key={type} value={type}>
+                            {type.charAt(0).toUpperCase() + type.slice(1)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Category *
+                      </label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value as Resource['category'] })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        required
+                      >
+                        {categories.map(category => (
+                          <option key={category} value={category}>
+                            {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Description *
+                      </label>
+                      <textarea
+                        value={formData.description}
+                        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        URL
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.url}
+                        onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        File Size
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.file_size}
+                        onChange={(e) => setFormData({ ...formData, file_size: e.target.value })}
+                        placeholder="e.g., 2.5 MB"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Thumbnail URL
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.thumbnail}
+                        onChange={(e) => setFormData({ ...formData, thumbnail: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Download Link
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.download_link}
+                        onChange={(e) => setFormData({ ...formData, download_link: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Video Link
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.video_link}
+                        onChange={(e) => setFormData({ ...formData, video_link: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Tags (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={Array.isArray(formData.tags) ? formData.tags.join(', ') : ''}
+                        onChange={(e) => setFormData({ 
+                          ...formData, 
+                          tags: e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag) 
+                        })}
+                        placeholder="e.g., React, JavaScript, Frontend"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={formData.featured}
+                          onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
+                          className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700">Featured Resource</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-6 border-t">
+                    <button
+                      type="button"
+                      onClick={() => setShowFormModal(false)}
+                      className="flex-1 px-4 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl hover:from-emerald-600 hover:to-teal-600 transition-all duration-300"
+                    >
+                      {selectedResource ? 'Update Resource' : 'Create Resource'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Confirmation Modal */}
         <AnimatePresence>
