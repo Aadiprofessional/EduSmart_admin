@@ -20,7 +20,8 @@ import {
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
-import { universityAPI, useAdminUID } from '../utils/apiService';
+import { universityAPI, useAdminUID, uploadAPI } from '../utils/apiService';
+import FileUpload from '../components/ui/FileUpload';
 
 interface University {
   id: string;
@@ -50,6 +51,9 @@ interface University {
   campus_type: string;
   accreditation: string;
   notable_alumni: string[];
+  region: string;
+  ranking_type: string;
+  ranking_year: number;
   slug: string;
   keywords: string[];
   status: string;
@@ -99,9 +103,13 @@ const Universities: React.FC = () => {
     campus_type: '',
     accreditation: '',
     notable_alumni: '',
+    region: '',
+    ranking_type: '',
+    ranking_year: '',
     featured: false,
     verified: false
   });
+  const [logoFile, setLogoFile] = useState<File | null>(null);
 
   const { enqueueSnackbar } = useSnackbar();
   const adminUid = useAdminUID();
@@ -237,6 +245,9 @@ const Universities: React.FC = () => {
         campus_type: formData.campus_type.trim() || undefined,
         accreditation: formData.accreditation.trim() || undefined,
         notable_alumni: formData.notable_alumni ? formData.notable_alumni.split(',').map(a => a.trim()).filter(a => a) : [],
+        region: formData.region.trim() || undefined,
+        ranking_type: formData.ranking_type.trim() || undefined,
+        ranking_year: formData.ranking_year ? parseInt(formData.ranking_year) : undefined,
         featured: formData.featured,
         verified: formData.verified
       };
@@ -317,6 +328,9 @@ const Universities: React.FC = () => {
       campus_type: university.campus_type || '',
       accreditation: university.accreditation || '',
       notable_alumni: university.notable_alumni ? university.notable_alumni.join(', ') : '',
+      region: university.region || '',
+      ranking_type: university.ranking_type || '',
+      ranking_year: university.ranking_year ? university.ranking_year.toString() : '',
       featured: university.featured || false,
       verified: university.verified || false
     });
@@ -362,6 +376,9 @@ const Universities: React.FC = () => {
       campus_type: '',
       accreditation: '',
       notable_alumni: '',
+      region: '',
+      ranking_type: '',
+      ranking_year: '',
       featured: false,
       verified: false
     });
@@ -861,14 +878,82 @@ const Universities: React.FC = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Logo URL
+                          Contact Email
+                        </label>
+                        <input
+                          type="email"
+                          value={formData.contact_email}
+                          onChange={(e) => setFormData({ ...formData, contact_email: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="admissions@university.edu"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Contact Phone
+                        </label>
+                        <input
+                          type="tel"
+                          value={formData.contact_phone}
+                          onChange={(e) => setFormData({ ...formData, contact_phone: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="+1-555-123-4567"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Logo Upload
+                        </label>
+                        <FileUpload
+                          onFileSelect={async (file) => {
+                            setLogoFile(file);
+                            if (file) {
+                              try {
+                                // Upload file to server
+                                const uploadResult = await uploadAPI.uploadImage(file);
+                                if (uploadResult.success) {
+                                  // Use the server URL
+                                  const serverUrl = `${process.env.NODE_ENV === 'production' 
+                                    ? 'https://edusmart-server.vercel.app' 
+                                    : 'http://localhost:8000'}${uploadResult.data.url}`;
+                                  setFormData({ ...formData, logo: serverUrl });
+                                  enqueueSnackbar('Logo uploaded successfully!', { variant: 'success' });
+                                } else {
+                                  enqueueSnackbar(`Upload failed: ${uploadResult.error}`, { variant: 'error' });
+                                  // Fallback to temporary URL for preview
+                                  const tempUrl = URL.createObjectURL(file);
+                                  setFormData({ ...formData, logo: tempUrl });
+                                }
+                              } catch (error) {
+                                console.error('Upload error:', error);
+                                enqueueSnackbar('Upload failed. Using temporary preview.', { variant: 'warning' });
+                                // Fallback to temporary URL for preview
+                                const tempUrl = URL.createObjectURL(file);
+                                setFormData({ ...formData, logo: tempUrl });
+                              }
+                            } else {
+                              setFormData({ ...formData, logo: '' });
+                            }
+                          }}
+                          currentImageUrl={formData.logo}
+                          label="University Logo"
+                          placeholder="Upload university logo"
+                          maxSize={2}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Image URL
                         </label>
                         <input
                           type="url"
-                          value={formData.logo}
-                          onChange={(e) => setFormData({ ...formData, logo: e.target.value })}
+                          value={formData.image}
+                          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
                           className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                          placeholder="https://example.com/logo.png"
+                          placeholder="https://example.com/university-image.jpg"
                         />
                       </div>
 
@@ -950,6 +1035,123 @@ const Universities: React.FC = () => {
                           placeholder="e.g., 1,200 acres"
                         />
                       </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          University Type
+                        </label>
+                        <select
+                          value={formData.type}
+                          onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        >
+                          <option value="">Select Type</option>
+                          <option value="Public">Public</option>
+                          <option value="Private">Private</option>
+                          <option value="Private Non-Profit">Private Non-Profit</option>
+                          <option value="For-Profit">For-Profit</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Campus Type
+                        </label>
+                        <select
+                          value={formData.campus_type}
+                          onChange={(e) => setFormData({ ...formData, campus_type: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        >
+                          <option value="">Select Campus Type</option>
+                          <option value="Urban">Urban</option>
+                          <option value="Suburban">Suburban</option>
+                          <option value="Rural">Rural</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Tuition Fee (USD)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.tuition_fee}
+                          onChange={(e) => setFormData({ ...formData, tuition_fee: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 45000"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Application Fee (USD)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.application_fee}
+                          onChange={(e) => setFormData({ ...formData, application_fee: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 75"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Region
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.region}
+                          onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., West Coast, Northeast"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Ranking Type
+                        </label>
+                        <select
+                          value={formData.ranking_type}
+                          onChange={(e) => setFormData({ ...formData, ranking_type: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        >
+                          <option value="">Select Ranking Type</option>
+                          <option value="QS">QS World University Rankings</option>
+                          <option value="TIMES">Times Higher Education</option>
+                          <option value="ARWU">Academic Ranking of World Universities</option>
+                          <option value="US News">US News & World Report</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Ranking Year
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.ranking_year}
+                          onChange={(e) => setFormData({ ...formData, ranking_year: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 2024"
+                          min="2000"
+                          max={new Date().getFullYear()}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Accreditation
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.accreditation}
+                          onChange={(e) => setFormData({ ...formData, accreditation: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., WASC, MSCHE"
+                        />
+                      </div>
                     </div>
 
                     <div>
@@ -983,11 +1185,24 @@ const Universities: React.FC = () => {
                         Facilities (comma-separated)
                       </label>
                       <textarea
-                        rows={2}
+                        rows={3}
                         value={formData.facilities}
                         onChange={(e) => setFormData({ ...formData, facilities: e.target.value })}
                         className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
-                        placeholder="Sports facilities, library, student center..."
+                        placeholder="Library, Sports Complex, Research Labs..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Notable Alumni (comma-separated)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={formData.notable_alumni}
+                        onChange={(e) => setFormData({ ...formData, notable_alumni: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        placeholder="John Doe, Jane Smith, Famous Person..."
                       />
                     </div>
 

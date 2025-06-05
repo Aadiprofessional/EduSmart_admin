@@ -99,21 +99,21 @@ export const blogAPI = {
 
   // Create blog (admin only)
   create: async (blogData: any, adminUid: string) => {
-    // Use author_id instead of uid to match the Blog type
-    const dataToSend = blogData.author_id ? blogData : { ...blogData, author_id: adminUid };
+    // Backend expects 'uid' field for admin verification
+    const dataToSend = { ...blogData, uid: adminUid };
     return apiCall('POST', '/api/blogs', dataToSend);
   },
 
   // Update blog (admin only)
   update: async (id: string, blogData: any, adminUid: string) => {
-    // Use author_id instead of uid to match the Blog type
-    const dataToSend = blogData.author_id ? blogData : { ...blogData, author_id: adminUid };
+    // Backend expects 'uid' field for admin verification
+    const dataToSend = { ...blogData, uid: adminUid };
     return apiCall('PUT', `/api/blogs/${id}`, dataToSend);
   },
 
   // Delete blog (admin only)
   delete: async (id: string, adminUid: string) => {
-    return apiCall('DELETE', `/api/blogs/${id}`, { author_id: adminUid });
+    return apiCall('DELETE', `/api/blogs/${id}`, { uid: adminUid });
   },
 
   // Get blog categories (public)
@@ -257,6 +257,47 @@ export const resourceAPI = {
   }
 };
 
+// Response API functions (for Resources page)
+export const responseAPI = {
+  // Get all responses (public)
+  getAll: async (page = 1, limit = 10, type?: string, category?: string) => {
+    let endpoint = `/api/responses?page=${page}&limit=${limit}`;
+    if (type) endpoint += `&type=${type}`;
+    if (category) endpoint += `&category=${category}`;
+    return apiCall('GET', endpoint);
+  },
+
+  // Get response by ID (public)
+  getById: async (id: string) => {
+    return apiCall('GET', `/api/responses/${id}`);
+  },
+
+  // Create response (admin only)
+  create: async (responseData: any, adminUid: string) => {
+    return apiCall('POST', '/api/responses', { ...responseData, uid: adminUid });
+  },
+
+  // Update response (admin only)
+  update: async (id: string, responseData: any, adminUid: string) => {
+    return apiCall('PUT', `/api/responses/${id}`, { ...responseData, uid: adminUid });
+  },
+
+  // Delete response (admin only)
+  delete: async (id: string, adminUid: string) => {
+    return apiCall('DELETE', `/api/responses/${id}`, { uid: adminUid });
+  },
+
+  // Get response categories (public)
+  getCategories: async () => {
+    return apiCall('GET', '/api/response-categories');
+  },
+
+  // Get response types (public)
+  getTypes: async () => {
+    return apiCall('GET', '/api/response-types');
+  }
+};
+
 // Case Study API functions
 export const caseStudyAPI = {
   // Get all case studies (public)
@@ -307,8 +348,8 @@ export const testAPIConnection = async (adminUid: string) => {
   // Test admin endpoints with a simple blog creation and deletion
   const testBlog = {
     title: 'API Connection Test',
-    content: 'Testing API connectivity',
-    excerpt: 'Test blog',
+    content: 'Testing API connectivity with proper UID handling for admin verification',
+    excerpt: 'Test blog for API connectivity',
     category: 'Test',
     tags: ['test']
   };
@@ -330,4 +371,29 @@ export const testAPIConnection = async (adminUid: string) => {
     publicEndpoints: blogsResult.success && scholarshipsResult.success,
     adminEndpoints: createResult.success
   };
+};
+
+// File upload API function
+export const uploadAPI = {
+  uploadImage: async (file: File) => {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await axios.post(`${BASE_URL}/api/uploads/image`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      console.error('File upload error:', error);
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message,
+        status: error.response?.status
+      };
+    }
+  }
 }; 

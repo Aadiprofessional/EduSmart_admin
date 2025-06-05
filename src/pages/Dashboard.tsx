@@ -248,11 +248,19 @@ const Dashboard: React.FC = () => {
             period="vs last month"
           />
           <StatsCard
-            title="Case Studies"
-            value={0}
+            title="Success Stories"
+            value={stats?.totalCaseStudies || 0}
             icon={MdCases}
             gradient="from-indigo-500 to-purple-600"
-            change="0%"
+            change="+7%"
+            period="vs last month"
+          />
+          <StatsCard
+            title="Resources"
+            value={stats?.totalResponses || 0}
+            icon={MdFolder}
+            gradient="from-teal-500 to-cyan-600"
+            change="+12%"
             period="vs last month"
           />
         </motion.div>

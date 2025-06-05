@@ -1,45 +1,161 @@
 import { supabaseAdmin } from './supabase';
 import { User, Course, Blog, Scholarship, Resource, CaseStudy, DashboardStats, ApplicationFilter } from './types';
 import { Application, Profile } from './supabase';
+import { courseAPI } from './apiService';
 
-// User Management
+const API_BASE_URL = 'https://edusmart-server.vercel.app/api';
+
+// User Management - Updated to use the correct API endpoints
 export const getUsers = async (): Promise<User[]> => {
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('*');
+  try {
+    const response = await fetch(`${API_BASE_URL}/users`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (error) {
-    console.error('Error fetching users:', error);
-    throw error;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.success && Array.isArray(data.data)) {
+      return data.data as User[];
+    } else {
+      console.error('Unexpected API response format:', data);
+      return [];
+    }
+  } catch (error) {
+    console.error('Error fetching users from API:', error);
+    
+    // Fallback to Supabase direct access
+    try {
+      const { data, error: supabaseError } = await supabaseAdmin
+        .from('profiles')
+        .select('*');
+
+      if (supabaseError) {
+        console.error('Error fetching users from Supabase:', supabaseError);
+        throw supabaseError;
+      }
+
+      return data as User[];
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+      throw fallbackError;
+    }
   }
-
-  return data as User[];
 };
 
 export const getUserById = async (userId: string): Promise<User | null> => {
-  const { data, error } = await supabaseAdmin
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .single();
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (error) {
-    console.error('Error fetching user:', error);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.success && data.data) {
+      return data.data as User;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching user from API:', error);
+    
+    // Fallback to Supabase direct access
+    try {
+      const { data, error: supabaseError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (supabaseError) {
+        console.error('Error fetching user from Supabase:', supabaseError);
+        throw supabaseError;
+      }
+
+      return data as User;
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+      throw fallbackError;
+    }
+  }
+};
+
+export const getUserStats = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/stats/overview`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.success && data.data) {
+      return data.data;
+    } else {
+      throw new Error('Failed to fetch user statistics');
+    }
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
     throw error;
   }
-
-  return data as User;
 };
 
 export const updateUserAdmin = async (userId: string, isAdmin: boolean): Promise<void> => {
-  const { error } = await supabaseAdmin
-    .from('profiles')
-    .update({ is_admin: isAdmin })
-    .eq('id', userId);
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ is_admin: isAdmin }),
+    });
 
-  if (error) {
-    console.error('Error updating user admin status:', error);
-    throw error;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to update user admin status');
+    }
+  } catch (error) {
+    console.error('Error updating user admin status via API:', error);
+    
+    // Fallback to Supabase direct access
+    try {
+      const { error: supabaseError } = await supabaseAdmin
+        .from('profiles')
+        .update({ is_admin: isAdmin })
+        .eq('id', userId);
+
+      if (supabaseError) {
+        console.error('Error updating user admin status via Supabase:', supabaseError);
+        throw supabaseError;
+      }
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+      throw fallbackError;
+    }
   }
 };
 
@@ -53,92 +169,157 @@ export const removeAdminStatus = async (userId: string): Promise<void> => {
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
-  // First delete the profile
-  const { error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .delete()
-    .eq('id', userId);
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (profileError) {
-    console.error('Error deleting user profile:', profileError);
-    throw profileError;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Failed to delete user');
+    }
+  } catch (error) {
+    console.error('Error deleting user via API:', error);
+    
+    // Fallback to Supabase direct access
+    try {
+      // First delete the profile
+      const { error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+
+      if (profileError) {
+        console.error('Error deleting user profile:', profileError);
+        throw profileError;
+      }
+
+      // Then delete the auth user
+      const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+
+      if (authError) {
+        console.error('Error deleting auth user:', authError);
+        throw authError;
+      }
+    } catch (fallbackError) {
+      console.error('Fallback also failed:', fallbackError);
+      throw fallbackError;
+    }
   }
+};
 
-  // Then delete the auth user
-  const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+export const getUserApplications = async (userId: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/users/${userId}/applications`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-  if (authError) {
-    console.error('Error deleting auth user:', authError);
-    throw authError;
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.success && data.data) {
+      return data.data;
+    } else {
+      return [];
+    }
+  } catch (error) {
+    console.error('Error fetching user applications:', error);
+    throw error;
   }
 };
 
 // Course Management
 export const getCourses = async (): Promise<Course[]> => {
-  const { data, error } = await supabaseAdmin
-    .from('courses')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
+  try {
+    const response = await courseAPI.getAll();
+    if (response.success) {
+      // Handle the API response structure
+      let coursesData = response.data;
+      
+      // The API returns { courses: [...], pagination: {...} }
+      if (coursesData && coursesData.courses) {
+        coursesData = coursesData.courses;
+      }
+      
+      return Array.isArray(coursesData) ? coursesData : [];
+    } else {
+      throw new Error(response.error || 'Failed to fetch courses');
+    }
+  } catch (error) {
     console.error('Error fetching courses:', error);
     throw error;
   }
-
-  return data as Course[];
 };
 
 export const getCourseById = async (courseId: string): Promise<Course | null> => {
-  const { data, error } = await supabaseAdmin
-    .from('courses')
-    .select('*')
-    .eq('id', courseId)
-    .single();
-
-  if (error) {
+  try {
+    const response = await courseAPI.getById(courseId);
+    if (response.success) {
+      return response.data.course || null;
+    } else {
+      throw new Error(response.error || 'Failed to fetch course');
+    }
+  } catch (error) {
     console.error('Error fetching course:', error);
     throw error;
   }
-
-  return data as Course;
 };
 
 export const createCourse = async (course: Omit<Course, 'id' | 'created_at' | 'updated_at'>): Promise<Course> => {
-  const { data, error } = await supabaseAdmin
-    .from('courses')
-    .insert([{ ...course, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }])
-    .select();
-
-  if (error) {
+  try {
+    const adminUid = 'bca2f806-29c5-4be9-bc2d-a484671546cd'; // Admin UID
+    const response = await courseAPI.create(course, adminUid);
+    
+    if (response.success) {
+      return response.data.course;
+    } else {
+      throw new Error(response.error || 'Failed to create course');
+    }
+  } catch (error) {
     console.error('Error creating course:', error);
     throw error;
   }
-
-  return data[0] as Course;
 };
 
 export const updateCourse = async (courseId: string, course: Partial<Course>): Promise<Course> => {
-  const { data, error } = await supabaseAdmin
-    .from('courses')
-    .update({ ...course, updated_at: new Date().toISOString() })
-    .eq('id', courseId)
-    .select();
-
-  if (error) {
+  try {
+    const adminUid = 'bca2f806-29c5-4be9-bc2d-a484671546cd'; // Admin UID
+    const response = await courseAPI.update(courseId, course, adminUid);
+    
+    if (response.success) {
+      return response.data.course;
+    } else {
+      throw new Error(response.error || 'Failed to update course');
+    }
+  } catch (error) {
     console.error('Error updating course:', error);
     throw error;
   }
-
-  return data[0] as Course;
 };
 
 export const deleteCourse = async (courseId: string): Promise<void> => {
-  const { error } = await supabaseAdmin
-    .from('courses')
-    .delete()
-    .eq('id', courseId);
-
-  if (error) {
+  try {
+    const adminUid = 'bca2f806-29c5-4be9-bc2d-a484671546cd'; // Admin UID
+    const response = await courseAPI.delete(courseId, adminUid);
+    
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to delete course');
+    }
+  } catch (error) {
     console.error('Error deleting course:', error);
     throw error;
   }
@@ -446,6 +627,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       totalResources: 0,
       totalBlogs: 0,
       totalScholarships: 0,
+      totalCaseStudies: 0,
+      totalResponses: 0,
       applicationsByStatus: {
         pending: 0,
         submitted: 0,
@@ -472,6 +655,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
     let totalResources = 0;
     let totalBlogs = 0;
     let totalScholarships = 0;
+    let totalCaseStudies = 0;
+    let totalResponses = 0;
     
     // Get total users - with error handling
     try {
@@ -561,6 +746,28 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       console.error('Error fetching scholarships count:', error);
     }
     
+    // Get total case studies - with error handling
+    try {
+      const caseStudiesResponse = await supabaseAdmin
+        .from('case_studies')
+        .select('*', { count: 'exact', head: true });
+        
+      totalCaseStudies = caseStudiesResponse.count || 0;
+    } catch (error) {
+      console.error('Error fetching case studies count:', error);
+    }
+    
+    // Get total responses - with error handling
+    try {
+      const responsesResponse = await supabaseAdmin
+        .from('responses')
+        .select('*', { count: 'exact', head: true });
+        
+      totalResponses = responsesResponse.count || 0;
+    } catch (error) {
+      console.error('Error fetching responses count:', error);
+    }
+    
     // Aggregate statistics by application status - with error handling
     const applicationsByStatus = {
       pending: 0,
@@ -596,6 +803,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       totalResources,
       totalBlogs,
       totalScholarships,
+      totalCaseStudies,
+      totalResponses,
       applicationsByStatus
     };
     
@@ -612,6 +821,8 @@ export const getDashboardStats = async (): Promise<DashboardStats> => {
       totalResources: 0,
       totalBlogs: 0,
       totalScholarships: 0,
+      totalCaseStudies: 0,
+      totalResponses: 0,
       applicationsByStatus: {
         pending: 0,
         submitted: 0,

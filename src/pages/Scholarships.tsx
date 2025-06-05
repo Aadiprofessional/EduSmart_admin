@@ -22,7 +22,8 @@ import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
 import { useAuth } from '../utils/AuthContext';
-import { scholarshipAPI } from '../utils/apiService';
+import { scholarshipAPI, uploadAPI } from '../utils/apiService';
+import FileUpload from '../components/ui/FileUpload';
 
 interface Scholarship {
   id: string;
@@ -35,6 +36,7 @@ interface Scholarship {
   country: string;
   application_link: string;
   requirements: string | null;
+  image?: string;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -61,8 +63,10 @@ const Scholarships: React.FC = () => {
     university: '',
     country: '',
     application_link: '',
-    requirements: ''
+    requirements: '',
+    image: ''
   });
+  const [imageFile, setImageFile] = useState<File | null>(null);
 
   const { enqueueSnackbar } = useSnackbar();
   const { getAdminUID } = useAuth();
@@ -249,7 +253,8 @@ const Scholarships: React.FC = () => {
       university: scholarship.university,
       country: scholarship.country,
       application_link: scholarship.application_link || '',
-      requirements: scholarship.requirements || ''
+      requirements: scholarship.requirements || '',
+      image: scholarship.image || ''
     });
     setIsViewModalOpen(false); // Close view modal if open
     setIsModalOpen(true);
@@ -272,7 +277,8 @@ const Scholarships: React.FC = () => {
       university: '',
       country: '',
       application_link: '',
-      requirements: ''
+      requirements: '',
+      image: ''
     });
   };
 
@@ -497,13 +503,70 @@ const Scholarships: React.FC = () => {
                 whileHover={{ y: -8, scale: 1.02 }}
                 layout
               >
+                {/* Scholarship Image */}
+                <div className={`relative ${viewMode === 'grid' ? 'h-48' : 'w-48 h-32'}`}>
+                  {scholarship.image ? (
+                    <img 
+                      src={scholarship.image} 
+                      alt={scholarship.title}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                      onError={(e) => {
+                        // Fallback to default background if image fails
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.nextElementSibling?.classList.remove('hidden');
+                      }}
+                    />
+                  ) : null}
+                  
+                  {/* Fallback gradient background */}
+                  <div className={`w-full h-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center ${scholarship.image ? 'hidden' : ''}`}>
+                    <IconWrapper icon={FaAward} className="text-white text-4xl" />
+                  </div>
+                  
+                  {/* Amount Badge */}
+                  <div className="absolute top-3 left-3">
+                    <span className="px-3 py-1 bg-green-500/90 text-white text-xs font-bold rounded-full backdrop-blur-md">
+                      {formatAmount(scholarship.amount)}
+                    </span>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <motion.button
+                      onClick={() => handleView(scholarship)}
+                      className="p-2 bg-blue-500/80 text-white rounded-full hover:bg-blue-600/80 backdrop-blur-md"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <IconWrapper icon={FaEye} />
+                    </motion.button>
+                    <motion.button
+                      onClick={() => handleEdit(scholarship)}
+                      className="p-2 bg-green-500/80 text-white rounded-full hover:bg-green-600/80 backdrop-blur-md"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <IconWrapper icon={FaEdit} />
+                    </motion.button>
+                    <motion.button
+                      onClick={() => handleDelete(scholarship.id)}
+                      className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-600/80 backdrop-blur-md"
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <IconWrapper icon={FaTrash} />
+                    </motion.button>
+                  </div>
+                </div>
+
                 {/* Scholarship Header */}
                 <div className={`relative ${viewMode === 'grid' ? 'p-6' : 'p-4 flex-1'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
-                          <IconWrapper icon={FaAward} className="text-white text-lg" />
+                          <IconWrapper icon={FaUniversity} className="text-white text-lg" />
                         </div>
                         <div>
                           <h3 className="text-xl font-bold text-gray-900 line-clamp-2 group-hover:text-green-600 transition-colors duration-300">
@@ -512,34 +575,6 @@ const Scholarships: React.FC = () => {
                           <p className="text-sm text-gray-500">{scholarship.university}</p>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      <motion.button
-                        onClick={() => handleView(scholarship)}
-                        className="p-2 bg-blue-500/80 text-white rounded-full hover:bg-blue-600/80 backdrop-blur-md"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <IconWrapper icon={FaEye} />
-                      </motion.button>
-                      <motion.button
-                        onClick={() => handleEdit(scholarship)}
-                        className="p-2 bg-green-500/80 text-white rounded-full hover:bg-green-600/80 backdrop-blur-md"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <IconWrapper icon={FaEdit} />
-                      </motion.button>
-                      <motion.button
-                        onClick={() => handleDelete(scholarship.id)}
-                        className="p-2 bg-red-500/80 text-white rounded-full hover:bg-red-600/80 backdrop-blur-md"
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <IconWrapper icon={FaTrash} />
-                      </motion.button>
                     </div>
                   </div>
 
@@ -856,6 +891,48 @@ const Scholarships: React.FC = () => {
                       })() && (
                         <p className="text-red-500 text-xs mt-1">Please enter a valid URL</p>
                       )}
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Image Upload
+                      </label>
+                      <FileUpload
+                        onFileSelect={async (file) => {
+                          setImageFile(file);
+                          if (file) {
+                            try {
+                              // Upload file to server
+                              const uploadResult = await uploadAPI.uploadImage(file);
+                              if (uploadResult.success) {
+                                // Use the server URL
+                                const serverUrl = `${process.env.NODE_ENV === 'production' 
+                                  ? 'https://edusmart-server.vercel.app' 
+                                  : 'http://localhost:8000'}${uploadResult.data.url}`;
+                                setFormData({ ...formData, image: serverUrl });
+                                enqueueSnackbar('Image uploaded successfully!', { variant: 'success' });
+                              } else {
+                                enqueueSnackbar(`Upload failed: ${uploadResult.error}`, { variant: 'error' });
+                                // Fallback to temporary URL for preview
+                                const tempUrl = URL.createObjectURL(file);
+                                setFormData({ ...formData, image: tempUrl });
+                              }
+                            } catch (error) {
+                              console.error('Upload error:', error);
+                              enqueueSnackbar('Upload failed. Using temporary preview.', { variant: 'warning' });
+                              // Fallback to temporary URL for preview
+                              const tempUrl = URL.createObjectURL(file);
+                              setFormData({ ...formData, image: tempUrl });
+                            }
+                          } else {
+                            setFormData({ ...formData, image: '' });
+                          }
+                        }}
+                        currentImageUrl={formData.image}
+                        label="Scholarship Image"
+                        placeholder="Upload scholarship image"
+                        maxSize={3}
+                      />
                     </div>
 
                     <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">

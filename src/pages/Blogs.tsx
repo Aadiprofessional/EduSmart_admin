@@ -127,6 +127,9 @@ const Blogs: React.FC = () => {
     if (!formData.excerpt || formData.excerpt.trim() === '') {
       errors.push('Excerpt is required');
     }
+    if (formData.excerpt && formData.excerpt.length > 300) {
+      errors.push('Excerpt must be at most 300 characters');
+    }
     if (!formData.category || formData.category.trim() === '') {
       errors.push('Category is required');
     }
@@ -144,16 +147,14 @@ const Blogs: React.FC = () => {
     }
     
     try {
+      // Prepare data exactly as the server expects
       const submitData = {
-        author_id: adminUID,
         title: formData.title.trim(),
         content: formData.content.trim(),
         excerpt: formData.excerpt.trim(),
         category: formData.category.trim(),
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(t => t.length > 0) : [],
-        image_url: formData.image.trim() || undefined,
-        is_published: true,
-        author_name: 'Admin'
+        image: formData.image.trim() || undefined
       };
 
       console.log('Submitting blog data:', submitData);
@@ -186,7 +187,8 @@ const Blogs: React.FC = () => {
         // If there are detailed validation errors, show them
         if (response.details && response.details.errors && Array.isArray(response.details.errors)) {
           console.error('Validation errors array:', response.details.errors);
-          errorMessage = `Validation errors: ${response.details.errors.join(', ')}`;
+          const errorMessages = response.details.errors.map((err: any) => err.msg || err.message || err).join(', ');
+          errorMessage = `Validation errors: ${errorMessages}`;
         }
         
         enqueueSnackbar(errorMessage, { variant: 'error' });
@@ -198,10 +200,8 @@ const Blogs: React.FC = () => {
       let errorMessage = 'Error saving blog';
       if (typeof error === 'string') {
         errorMessage = error;
-      } else if (error.message) {
+      } else if (error?.message) {
         errorMessage = error.message;
-      } else if (error.error) {
-        errorMessage = error.error;
       }
       
       enqueueSnackbar(errorMessage, { variant: 'error' });
@@ -722,7 +722,7 @@ const Blogs: React.FC = () => {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Excerpt * <span className="text-xs text-gray-500">(Brief description)</span>
+                        Excerpt * <span className="text-xs text-gray-500">({formData.excerpt.length}/300 characters max)</span>
                       </label>
                       <textarea
                         required
@@ -730,12 +730,15 @@ const Blogs: React.FC = () => {
                         value={formData.excerpt}
                         onChange={(e) => setFormData({ ...formData, excerpt: e.target.value })}
                         className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 ${
-                          formData.excerpt.trim() === '' ? 'border-red-300 focus:ring-red-500' : 'border-gray-300/50'
+                          formData.excerpt.trim() === '' || formData.excerpt.length > 300 ? 'border-red-300 focus:ring-red-500' : 'border-gray-300/50'
                         }`}
-                        placeholder="Brief description of the blog post..."
+                        placeholder="Brief description of the blog post (max 300 characters)..."
                       />
                       {formData.excerpt.trim() === '' && (
                         <p className="text-red-500 text-xs mt-1">Excerpt is required</p>
+                      )}
+                      {formData.excerpt.length > 300 && (
+                        <p className="text-red-500 text-xs mt-1">Excerpt must be at most 300 characters</p>
                       )}
                     </div>
 

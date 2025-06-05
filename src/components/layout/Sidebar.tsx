@@ -44,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { name: 'Scholarships', path: '/scholarships', icon: MdAttachMoney },
     { name: 'Universities', path: '/universities', icon: MdSchool },
     { name: 'Resources', path: '/resources', icon: MdFolder },
-    { name: 'Case Studies', path: '/case-studies', icon: MdCases },
+    { name: 'Success Stories', path: '/case-studies', icon: MdCases },
     { name: 'Settings', path: '/settings', icon: MdSettings },
   ];
 

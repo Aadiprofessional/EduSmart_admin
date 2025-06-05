@@ -5,39 +5,39 @@
 /**
  * Format a number as currency (USD)
  */
-export const formatCurrency = (value: number): string => {
+export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
+    maximumFractionDigits: 2,
+  }).format(amount);
 };
 
 /**
  * Format a date string
  */
-export const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
+export const formatDate = (date: string | Date): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
-    month: 'short',
+    month: 'long',
     day: 'numeric',
-  }).format(date);
+  }).format(dateObj);
 };
 
 /**
  * Format a date with time
  */
-export const formatDateTime = (dateString: string): string => {
-  const date = new Date(dateString);
+export const formatDateTime = (date: string | Date): string => {
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-    hour: 'numeric',
-    minute: 'numeric',
-  }).format(date);
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(dateObj);
 };
 
 /**
@@ -45,7 +45,7 @@ export const formatDateTime = (dateString: string): string => {
  */
 export const truncateText = (text: string, maxLength: number): string => {
   if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + '...';
+  return text.substring(0, maxLength).trim() + '...';
 };
 
 /**
@@ -87,7 +87,7 @@ export const formatFileSize = (bytes: number): string => {
 /**
  * Generate a slug from a string
  */
-export const generateSlug = (text: string): string => {
+export const slugify = (text: string): string => {
   return text
     .toLowerCase()
     .replace(/[^\w ]+/g, '')
@@ -111,4 +111,8 @@ export const isValidUrl = (url: string): boolean => {
  */
 export const delay = (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
+};
+
+export const capitalizeFirst = (str: string): string => {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }; 
