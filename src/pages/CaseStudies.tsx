@@ -28,6 +28,8 @@ import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
 import { caseStudyAPI, useAdminUID } from '../utils/apiService';
+import FileUpload from '../components/ui/FileUpload';
+import { uploadFile } from '../utils/fileUpload';
 
 interface CaseStudy {
   id: string;
@@ -557,6 +559,34 @@ const CaseStudies: React.FC = () => {
                           required
                         />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Student Image</label>
+                      <FileUpload
+                        onFileSelect={async (file: File | null) => {
+                          if (file) {
+                            try {
+                              // Upload file to Supabase storage
+                              const uploadedUrl = await uploadFile(file, 'universityimages', 'case-studies');
+                              setFormData({...formData, student_image: uploadedUrl});
+                              enqueueSnackbar('Student image uploaded successfully!', { variant: 'success' });
+                            } catch (error) {
+                              console.error('Upload error:', error);
+                              enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                              // Fallback to temporary URL for preview
+                              const tempUrl = URL.createObjectURL(file);
+                              setFormData({...formData, student_image: tempUrl});
+                            }
+                          } else {
+                            setFormData({...formData, student_image: ''});
+                          }
+                        }}
+                        currentImageUrl={formData.student_image}
+                        label="Student Image"
+                        placeholder="Upload student photo"
+                        maxSize={5}
+                      />
                     </div>
 
                     <div>

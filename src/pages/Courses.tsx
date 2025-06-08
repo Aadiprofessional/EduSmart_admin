@@ -30,7 +30,12 @@ import {
   FaLayerGroup,
   FaListOl,
   FaCheck,
-  FaSpinner
+  FaSpinner,
+  FaUsers,
+  FaChevronDown,
+  FaChevronUp,
+  FaBook,
+  FaTasks
 } from 'react-icons/fa';
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
@@ -38,6 +43,9 @@ import { IconWrapper } from '../utils/IconWrapper';
 import { getCourses, deleteCourse, updateCourse, createCourse, getCourseById } from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
 import { formatCurrency } from '../utils/helpers';
+import FileUpload from '../components/ui/FileUpload';
+import VideoUpload from '../components/ui/VideoUpload';
+import { uploadFile } from '../utils/fileUpload';
 
 // Enhanced API service
 const API_BASE = 'http://localhost:8000/api/v2';
@@ -979,24 +987,58 @@ const Courses: React.FC = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Thumbnail Image URL</label>
-              <input
-                type="url"
-                value={formData.thumbnail_image}
-                onChange={(e) => setFormData({ ...formData, thumbnail_image: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://example.com/image.jpg"
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Thumbnail Image</label>
+              <FileUpload
+                onFileSelect={async (file: File | null) => {
+                  if (file) {
+                    try {
+                      // Upload file to Supabase storage
+                      const uploadedUrl = await uploadFile(file, 'universityimages', 'courses');
+                      setFormData({ ...formData, thumbnail_image: uploadedUrl });
+                      enqueueSnackbar('Thumbnail uploaded successfully!', { variant: 'success' });
+                    } catch (error) {
+                      console.error('Upload error:', error);
+                      enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                      // Fallback to temporary URL for preview
+                      const tempUrl = URL.createObjectURL(file);
+                      setFormData({ ...formData, thumbnail_image: tempUrl });
+                    }
+                  } else {
+                    setFormData({ ...formData, thumbnail_image: '' });
+                  }
+                }}
+                currentImageUrl={formData.thumbnail_image}
+                label="Course Thumbnail"
+                placeholder="Upload course thumbnail image"
+                maxSize={5}
               />
             </div>
             
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Preview Video URL</label>
-              <input
-                type="url"
-                value={formData.preview_video_url}
-                onChange={(e) => setFormData({ ...formData, preview_video_url: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="https://example.com/video.mp4"
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Preview Video</label>
+              <VideoUpload
+                onFileSelect={async (video: File | null) => {
+                  if (video) {
+                    try {
+                      // Upload video to Supabase storage
+                      const uploadedUrl = await uploadFile(video, 'universityimages', 'courses');
+                      setFormData({ ...formData, preview_video_url: uploadedUrl });
+                      enqueueSnackbar('Video uploaded successfully!', { variant: 'success' });
+                    } catch (error) {
+                      console.error('Upload error:', error);
+                      enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                      // Fallback to temporary URL for preview
+                      const tempUrl = URL.createObjectURL(video);
+                      setFormData({ ...formData, preview_video_url: tempUrl });
+                    }
+                  } else {
+                    setFormData({ ...formData, preview_video_url: '' });
+                  }
+                }}
+                currentVideoUrl={formData.preview_video_url}
+                label="Preview Video"
+                placeholder="Upload preview video"
+                maxSize={50}
               />
             </div>
           </div>

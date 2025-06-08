@@ -29,6 +29,9 @@ import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
 import { useAuth } from '../utils/AuthContext';
+import FileUpload from '../components/ui/FileUpload';
+import VideoUpload from '../components/ui/VideoUpload';
+import { uploadFile } from '../utils/fileUpload';
 
 // Enhanced API service
 const API_BASE = 'http://localhost:8000/api/v2';
@@ -935,13 +938,30 @@ const CourseContent: React.FC = () => {
                     {lectureForm.lecture_type === 'video' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Video URL</label>
-                          <input
-                            type="url"
-                            value={lectureForm.video_url}
-                            onChange={(e) => setLectureForm({ ...lectureForm, video_url: e.target.value })}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            placeholder="https://example.com/video.mp4"
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">Video Upload</label>
+                          <VideoUpload
+                            onFileSelect={async (video: File | null) => {
+                              if (video) {
+                                try {
+                                  // Upload video to Supabase storage
+                                  const uploadedUrl = await uploadFile(video, 'universityimages', 'course-content');
+                                  setLectureForm({ ...lectureForm, video_url: uploadedUrl });
+                                  enqueueSnackbar('Video uploaded successfully!', { variant: 'success' });
+                                } catch (error) {
+                                  console.error('Upload error:', error);
+                                  enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                                  // Fallback to temporary URL for preview
+                                  const tempUrl = URL.createObjectURL(video);
+                                  setLectureForm({ ...lectureForm, video_url: tempUrl });
+                                }
+                              } else {
+                                setLectureForm({ ...lectureForm, video_url: '' });
+                              }
+                            }}
+                            currentVideoUrl={lectureForm.video_url}
+                            label="Lecture Video"
+                            placeholder="Upload lecture video"
+                            maxSize={100}
                           />
                         </div>
 
@@ -973,13 +993,30 @@ const CourseContent: React.FC = () => {
 
                     {(lectureForm.lecture_type === 'resource' || lectureForm.lecture_type === 'assignment') && (
                       <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Resource URL</label>
-                        <input
-                          type="url"
-                          value={lectureForm.resource_url}
-                          onChange={(e) => setLectureForm({ ...lectureForm, resource_url: e.target.value })}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          placeholder="https://example.com/resource.pdf"
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Resource Upload</label>
+                        <FileUpload
+                          onFileSelect={async (file: File | null) => {
+                            if (file) {
+                              try {
+                                // Upload file to Supabase storage
+                                const uploadedUrl = await uploadFile(file, 'universityimages', 'course-content');
+                                setLectureForm({ ...lectureForm, resource_url: uploadedUrl });
+                                enqueueSnackbar('Resource uploaded successfully!', { variant: 'success' });
+                              } catch (error) {
+                                console.error('Upload error:', error);
+                                enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                                // Fallback to temporary URL for preview
+                                const tempUrl = URL.createObjectURL(file);
+                                setLectureForm({ ...lectureForm, resource_url: tempUrl });
+                              }
+                            } else {
+                              setLectureForm({ ...lectureForm, resource_url: '' });
+                            }
+                          }}
+                          currentImageUrl={lectureForm.resource_url}
+                          label="Resource File"
+                          placeholder="Upload resource file (PDF, DOC, etc.)"
+                          maxSize={25}
                         />
                       </div>
                     )}

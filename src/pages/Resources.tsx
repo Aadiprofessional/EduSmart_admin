@@ -30,6 +30,8 @@ import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
 import { responseAPI, useAdminUID } from '../utils/apiService';
+import FileUpload from '../components/ui/FileUpload';
+import { uploadFile } from '../utils/fileUpload';
 
 interface Resource {
   id: string;
@@ -766,13 +768,30 @@ const Resources: React.FC = () => {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail URL</label>
-                        <input
-                          type="url"
-                          value={formData.thumbnail}
-                          onChange={(e) => setFormData({...formData, thumbnail: e.target.value})}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500"
-                          placeholder="https://example.com/thumbnail.jpg"
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Thumbnail</label>
+                        <FileUpload
+                          onFileSelect={async (file: File | null) => {
+                            if (file) {
+                              try {
+                                // Upload file to Supabase storage
+                                const uploadedUrl = await uploadFile(file, 'universityimages', 'resources');
+                                setFormData({...formData, thumbnail: uploadedUrl});
+                                enqueueSnackbar('Thumbnail uploaded successfully!', { variant: 'success' });
+                              } catch (error) {
+                                console.error('Upload error:', error);
+                                enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                                // Fallback to temporary URL for preview
+                                const tempUrl = URL.createObjectURL(file);
+                                setFormData({...formData, thumbnail: tempUrl});
+                              }
+                            } else {
+                              setFormData({...formData, thumbnail: ''});
+                            }
+                          }}
+                          currentImageUrl={formData.thumbnail}
+                          label="Resource Thumbnail"
+                          placeholder="Upload resource thumbnail"
+                          maxSize={5}
                         />
                       </div>
 

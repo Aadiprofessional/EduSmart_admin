@@ -21,6 +21,8 @@ import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
 import { useAuth } from '../utils/AuthContext';
 import { blogAPI } from '../utils/apiService';
+import FileUpload from '../components/ui/FileUpload';
+import { uploadFile } from '../utils/fileUpload';
 
 interface Blog {
   id: string;
@@ -699,24 +701,32 @@ const Blogs: React.FC = () => {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Featured Image URL
+                          Featured Image
                         </label>
-                        <input
-                          type="url"
-                          value={formData.image}
-                          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
-                          className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300 ${
-                            formData.image && formData.image.trim() !== '' && (() => {
-                              try { new URL(formData.image); return false; } catch { return true; }
-                            })() ? 'border-red-300 focus:ring-red-500' : 'border-gray-300/50'
-                          }`}
-                          placeholder="https://example.com/image.jpg (optional)"
+                        <FileUpload
+                          onFileSelect={async (file: File | null) => {
+                            if (file) {
+                              try {
+                                // Upload file to Supabase storage
+                                const uploadedUrl = await uploadFile(file, 'universityimages', 'blogs');
+                                setFormData({ ...formData, image: uploadedUrl });
+                                enqueueSnackbar('Image uploaded successfully!', { variant: 'success' });
+                              } catch (error) {
+                                console.error('Upload error:', error);
+                                enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                                // Fallback to temporary URL for preview
+                                const tempUrl = URL.createObjectURL(file);
+                                setFormData({ ...formData, image: tempUrl });
+                              }
+                            } else {
+                              setFormData({ ...formData, image: '' });
+                            }
+                          }}
+                          currentImageUrl={formData.image}
+                          label="Featured Image"
+                          placeholder="Upload blog featured image"
+                          maxSize={5}
                         />
-                        {formData.image && formData.image.trim() !== '' && (() => {
-                          try { new URL(formData.image); return false; } catch { return true; }
-                        })() && (
-                          <p className="text-red-500 text-xs mt-1">Please enter a valid URL</p>
-                        )}
                       </div>
                     </div>
 

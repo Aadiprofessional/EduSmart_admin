@@ -2,24 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { 
-  FaGraduationCap,
-  FaBookOpen,
-  FaDollarSign,
+  FaArrowLeft,
+  FaBook,
   FaUser,
   FaImage,
   FaLightbulb,
   FaRocket,
   FaSave,
-  FaTimes,
-  FaSpinner
+  FaSpinner,
+  FaDollarSign,
+  FaClock,
+  FaGlobe,
+  FaGraduationCap,
+  FaTag
 } from 'react-icons/fa';
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
 import { useAuth } from '../utils/AuthContext';
-
-// Enhanced API service
-const API_BASE = 'http://localhost:8000/api/v2';
+import FileUpload from '../components/ui/FileUpload';
+import VideoUpload from '../components/ui/VideoUpload';
+import { uploadFile } from '../utils/fileUpload';
 
 interface Category {
   id: string;
@@ -71,61 +74,57 @@ const CreateCourse: React.FC = () => {
   // API Functions
   const fetchCategories = async () => {
     try {
-      setLoading(true);
-      const response = await fetch(`${API_BASE}/course-categories`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setCategories(data.data.categories || []);
+      const response = await fetch('/api/course-categories');
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
-      enqueueSnackbar('Error fetching categories', { variant: 'error' });
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!profile?.id) {
-      enqueueSnackbar('Admin UID not available', { variant: 'error' });
-      return;
-    }
+    setSubmitting(true);
 
     try {
-      setSubmitting(true);
-      
-      const submitData = {
+      // Validate required fields
+      if (!formData.title || !formData.description || !formData.instructor_name) {
+        enqueueSnackbar('Please fill in all required fields', { variant: 'error' });
+        return;
+      }
+
+      // Prepare course data
+      const courseData = {
         ...formData,
         what_you_will_learn: formData.what_you_will_learn.split('\n').filter(item => item.trim()),
         prerequisites: formData.prerequisites.split('\n').filter(item => item.trim()),
         target_audience: formData.target_audience.split('\n').filter(item => item.trim()),
         course_includes: formData.course_includes.split('\n').filter(item => item.trim()),
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
-        uid: profile.id
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag)
       };
 
-      const response = await fetch(`${API_BASE}/courses`, {
+      // Make API call to create course
+      const response = await fetch('/api/courses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(submitData),
+        body: JSON.stringify(courseData)
       });
 
-      const data = await response.json();
-      
-      if (data.success) {
-        enqueueSnackbar('Course created successfully', { variant: 'success' });
+      if (response.ok) {
+        enqueueSnackbar('Course created successfully!', { variant: 'success' });
+        resetForm();
         navigate('/courses');
       } else {
-        throw new Error(data.error || 'Failed to create course');
+        const errorData = await response.json();
+        enqueueSnackbar(errorData.message || 'Failed to create course', { variant: 'error' });
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error creating course:', error);
-      enqueueSnackbar(error.message || 'Error creating course', { variant: 'error' });
+      enqueueSnackbar('An error occurred while creating the course', { variant: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -174,14 +173,14 @@ const CreateCourse: React.FC = () => {
                 onClick={resetForm}
                 className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
               >
-                <IconWrapper icon={FaTimes} size={14} />
+                <IconWrapper icon={FaArrowLeft} size={14} />
                 Reset Form
               </button>
               <button
                 onClick={() => navigate('/courses')}
                 className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
               >
-                <IconWrapper icon={FaTimes} size={14} />
+                <IconWrapper icon={FaArrowLeft} size={14} />
                 Cancel
               </button>
             </div>
@@ -191,7 +190,7 @@ const CreateCourse: React.FC = () => {
             {/* Basic Information */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <IconWrapper icon={FaBookOpen} className="text-blue-500" />
+                <IconWrapper icon={FaBook} className="text-blue-500" />
                 Basic Information
               </h2>
               
@@ -364,24 +363,58 @@ const CreateCourse: React.FC = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Thumbnail Image URL</label>
-                  <input
-                    type="url"
-                    value={formData.thumbnail_image}
-                    onChange={(e) => setFormData({ ...formData, thumbnail_image: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/image.jpg"
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Thumbnail Image</label>
+                  <FileUpload
+                    onFileSelect={async (file: File | null) => {
+                      if (file) {
+                        try {
+                          // Upload file to Supabase storage
+                          const uploadedUrl = await uploadFile(file, 'universityimages', 'courses');
+                          setFormData({ ...formData, thumbnail_image: uploadedUrl });
+                          enqueueSnackbar('Thumbnail uploaded successfully!', { variant: 'success' });
+                        } catch (error) {
+                          console.error('Upload error:', error);
+                          enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                          // Fallback to temporary URL for preview
+                          const tempUrl = URL.createObjectURL(file);
+                          setFormData({ ...formData, thumbnail_image: tempUrl });
+                        }
+                      } else {
+                        setFormData({ ...formData, thumbnail_image: '' });
+                      }
+                    }}
+                    currentImageUrl={formData.thumbnail_image}
+                    label="Course Thumbnail"
+                    placeholder="Upload course thumbnail image"
+                    maxSize={5}
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preview Video URL</label>
-                  <input
-                    type="url"
-                    value={formData.preview_video_url}
-                    onChange={(e) => setFormData({ ...formData, preview_video_url: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://example.com/video.mp4"
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preview Video</label>
+                  <VideoUpload
+                    onFileSelect={async (video: File | null) => {
+                      if (video) {
+                        try {
+                          // Upload video to Supabase storage
+                          const uploadedUrl = await uploadFile(video, 'universityimages', 'courses');
+                          setFormData({ ...formData, preview_video_url: uploadedUrl });
+                          enqueueSnackbar('Video uploaded successfully!', { variant: 'success' });
+                        } catch (error) {
+                          console.error('Upload error:', error);
+                          enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                          // Fallback to temporary URL for preview
+                          const tempUrl = URL.createObjectURL(video);
+                          setFormData({ ...formData, preview_video_url: tempUrl });
+                        }
+                      } else {
+                        setFormData({ ...formData, preview_video_url: '' });
+                      }
+                    }}
+                    currentVideoUrl={formData.preview_video_url}
+                    label="Preview Video"
+                    placeholder="Upload course preview video"
+                    maxSize={50}
                   />
                 </div>
               </div>

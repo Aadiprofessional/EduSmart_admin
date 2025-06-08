@@ -1,5 +1,6 @@
 import { supabaseAdmin } from './supabase';
 import { v4 as uuidv4 } from 'uuid';
+import './ensureBucket'; // Ensure bucket exists when this module is loaded
 
 /**
  * Upload a file to Supabase storage
@@ -10,10 +11,13 @@ import { v4 as uuidv4 } from 'uuid';
  */
 export const uploadFile = async (
   file: File,
-  bucket: string = 'public',
+  bucket: string = 'universityimages',
   folder: string = 'uploads'
 ): Promise<string> => {
   try {
+    // Ensure bucket exists before uploading
+    await createBucketIfNotExists(bucket);
+    
     const fileExt = file.name.split('.').pop();
     const fileName = `${uuidv4()}.${fileExt}`;
     const filePath = `${folder}/${fileName}`;
@@ -50,7 +54,7 @@ export const uploadFile = async (
  */
 export const deleteFile = async (
   fileUrl: string,
-  bucket: string = 'public'
+  bucket: string = 'universityimages'
 ): Promise<boolean> => {
   try {
     // Extract the path from the public URL
