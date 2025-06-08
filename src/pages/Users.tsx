@@ -16,46 +16,77 @@ import {
   FaEnvelope,
   FaCalendarAlt,
   FaCrown,
-  FaUserTie
+  FaUserTie,
+  FaSync,
+  FaExclamationTriangle
 } from 'react-icons/fa';
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
 import { IconWrapper } from '../utils/IconWrapper';
 import { User } from '../utils/types';
-import { getUsers, makeUserAdmin, removeAdminStatus, deleteUser } from '../utils/api';
+import { getUsers, makeUserAdmin, removeAdminStatus, deleteUser, getUserStats } from '../utils/api';
 
 const Users: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [actionType, setActionType] = useState<'delete' | 'admin' | 'remove-admin'>('delete');
+  const [actionLoading, setActionLoading] = useState(false);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    adminUsers: 0,
+    newUsersThisMonth: 0,
+    activeUsers: 0
+  });
+  const [error, setError] = useState<string | null>(null);
 
   const { enqueueSnackbar } = useSnackbar();
 
   useEffect(() => {
     fetchUsers();
+    fetchStats();
   }, []);
 
   const fetchUsers = async () => {
     try {
+      setError(null);
       const data = await getUsers();
       setUsers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching users:', error);
+      setError('Failed to load users. Please try again.');
       enqueueSnackbar('Error fetching users', { variant: 'error' });
       setUsers([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
-  const handleAction = async () => {
-    if (!selectedUser) return;
+  const fetchStats = async () => {
+    try {
+      const statsData = await getUserStats();
+      setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching user stats:', error);
+      // Don't show error for stats, just use defaults
+    }
+  };
 
+  const refreshData = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchUsers(), fetchStats()]);
+  };
+
+  const handleAction = async () => {
+    if (!selectedUser || actionLoading) return;
+
+    setActionLoading(true);
     try {
       switch (actionType) {
         case 'delete':
@@ -71,11 +102,13 @@ const Users: React.FC = () => {
           enqueueSnackbar(`Removed admin status from ${selectedUser.name}`, { variant: 'success' });
           break;
       }
-      fetchUsers();
+      await Promise.all([fetchUsers(), fetchStats()]);
       setShowConfirmModal(false);
     } catch (error) {
       console.error('Error performing action:', error);
-      enqueueSnackbar('Error performing action', { variant: 'error' });
+      enqueueSnackbar('Error performing action. Please try again.', { variant: 'error' });
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -170,18 +203,29 @@ const Users: React.FC = () => {
               </motion.p>
             </div>
             <motion.div
-              className="flex items-center gap-4"
+              className="flex items-center gap-6"
               initial={{ x: 50, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.4 }}
             >
               <div className="text-right">
-                <p className="text-2xl font-bold">{users.length}</p>
+                <p className="text-2xl font-bold">{stats.totalUsers}</p>
                 <p className="text-blue-200 text-sm">Total Users</p>
               </div>
-              <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
-                <IconWrapper icon={FaUsers} className="text-2xl" />
+              <div className="text-right">
+                <p className="text-2xl font-bold">{stats.adminUsers}</p>
+                <p className="text-blue-200 text-sm">Admins</p>
               </div>
+              <motion.button
+                onClick={refreshData}
+                disabled={refreshing}
+                className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center hover:bg-white/30 transition-all duration-300 disabled:opacity-50"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                title="Refresh Data"
+              >
+                <IconWrapper icon={FaSync} className={`text-2xl ${refreshing ? 'animate-spin' : ''}`} />
+              </motion.button>
             </motion.div>
           </div>
           
@@ -189,6 +233,31 @@ const Users: React.FC = () => {
           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl animate-pulse"></div>
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-cyan-300/20 rounded-full blur-lg animate-bounce"></div>
         </motion.div>
+
+        {/* Error Message */}
+        {error && (
+          <motion.div 
+            className="bg-red-50 border-l-4 border-red-400 p-4 rounded-lg"
+            variants={itemVariants}
+          >
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <IconWrapper icon={FaExclamationTriangle} className="h-5 w-5 text-red-400" />
+              </div>
+              <div className="ml-3">
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+              <div className="ml-auto pl-3">
+                <button
+                  onClick={() => setError(null)}
+                  className="text-red-400 hover:text-red-600"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
 
         {/* Advanced Filters */}
         <motion.div 
@@ -477,21 +546,29 @@ const Users: React.FC = () => {
                     </motion.button>
                     <motion.button
                       onClick={handleAction}
-                      className={`flex-1 px-4 py-2 text-white rounded-xl transition-all duration-300 ${
+                      disabled={actionLoading}
+                      className={`flex-1 px-4 py-2 text-white rounded-xl transition-all duration-300 disabled:opacity-50 ${
                         actionType === 'delete' 
                           ? 'bg-red-500 hover:bg-red-600' 
                           : actionType === 'admin' 
                             ? 'bg-purple-500 hover:bg-purple-600' 
                             : 'bg-orange-500 hover:bg-orange-600'
                       }`}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      whileHover={{ scale: actionLoading ? 1 : 1.02 }}
+                      whileTap={{ scale: actionLoading ? 1 : 0.98 }}
                     >
-                      {actionType === 'delete' 
-                        ? 'Delete' 
-                        : actionType === 'admin' 
-                          ? 'Make Admin' 
-                          : 'Remove Admin'}
+                      {actionLoading ? (
+                        <div className="flex items-center justify-center">
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        actionType === 'delete' 
+                          ? 'Delete' 
+                          : actionType === 'admin' 
+                            ? 'Make Admin' 
+                            : 'Remove Admin'
+                      )}
                     </motion.button>
                   </div>
                 </div>

@@ -10,12 +10,14 @@ import Unauthorized from './pages/Unauthorized';
 import Dashboard from './pages/Dashboard';
 import Users from './pages/Users';
 import Courses from './pages/Courses';
+import CreateCourse from './pages/CreateCourse';
 import Scholarships from './pages/Scholarships';
 import Universities from './pages/Universities';
 import Blogs from './pages/Blogs';
 import Resources from './pages/Resources';
 import Settings from './pages/Settings';
 import CaseStudies from './pages/CaseStudies';
+import CourseContent from './pages/CourseContent';
 
 // Debug route component to check if redirects are happening
 const DebugRoute = ({ children }: { children: React.ReactNode }) => {
@@ -77,7 +79,7 @@ function App() {
             <Route path="/courses/new" element={
               <ProtectedRoute>
                 <DebugRoute>
-                  <Courses />
+                  <CreateCourse />
                 </DebugRoute>
               </ProtectedRoute>
             } />
@@ -93,6 +95,11 @@ function App() {
                 <DebugRoute>
                   <Courses />
                 </DebugRoute>
+              </ProtectedRoute>
+            } />
+            <Route path="/courses/:courseId/content" element={
+              <ProtectedRoute>
+                <CourseContent />
               </ProtectedRoute>
             } />
             <Route path="/blogs" element={

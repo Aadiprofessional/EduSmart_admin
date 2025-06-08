@@ -14,7 +14,13 @@ import {
   MdMenu,
   MdClose,
   MdChevronLeft,
-  MdChevronRight
+  MdChevronRight,
+  MdExpandMore,
+  MdExpandLess,
+  MdPlayCircleOutline,
+  MdLibraryBooks,
+  MdQuiz,
+  MdAssignment
 } from 'react-icons/md';
 import { IconType } from 'react-icons';
 import { useAuth } from '../../utils/AuthContext';
@@ -35,11 +41,28 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const location = useLocation();
   const { signOut, profile } = useAuth();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['courses']);
+  
+  const toggleMenu = (menuName: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(menuName) 
+        ? prev.filter(name => name !== menuName)
+        : [...prev, menuName]
+    );
+  };
   
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: MdDashboard },
     { name: 'Users', path: '/users', icon: MdPeople },
-    { name: 'Courses', path: '/courses', icon: MdSchool },
+    { 
+      name: 'Courses', 
+      path: '/courses', 
+      icon: MdSchool,
+      submenu: [
+        { name: 'All Courses', path: '/courses', icon: MdLibraryBooks },
+        { name: 'Create Course', path: '/courses/new', icon: MdPlayCircleOutline },
+      ]
+    },
     { name: 'Blog Posts', path: '/blogs', icon: MdArticle },
     { name: 'Scholarships', path: '/scholarships', icon: MdAttachMoney },
     { name: 'Universities', path: '/universities', icon: MdSchool },
@@ -49,7 +72,11 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const isActive = (path: string) => {
-    return location.pathname.startsWith(path);
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
+
+  const isMenuExpanded = (menuName: string) => {
+    return expandedMenus.includes(menuName);
   };
 
   const sidebarVariants = {
@@ -72,6 +99,71 @@ const Sidebar: React.FC<SidebarProps> = ({
         duration: 0.3 
       } 
     },
+  };
+
+  const renderNavItem = (item: any, isMobile = false) => {
+    const hasSubmenu = item.submenu && item.submenu.length > 0;
+    const isExpanded = isMenuExpanded(item.name.toLowerCase());
+    const itemIsActive = isActive(item.path);
+
+    if (hasSubmenu && !collapsed) {
+      return (
+        <div key={item.path}>
+          <button
+            onClick={() => toggleMenu(item.name.toLowerCase())}
+            className={`sidebar-link w-full ${itemIsActive ? 'active' : ''} ${collapsed ? 'justify-center' : 'justify-between'}`}
+          >
+            <div className="flex items-center gap-3">
+              <IconWrapper icon={item.icon} size={20} />
+              {!collapsed && <span>{item.name}</span>}
+            </div>
+            {!collapsed && (
+              <IconWrapper 
+                icon={isExpanded ? MdExpandLess : MdExpandMore} 
+                size={20} 
+              />
+            )}
+          </button>
+          
+          {!collapsed && isExpanded && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="ml-4 mt-1 space-y-1"
+            >
+              {item.submenu.map((subItem: any) => (
+                <NavLink
+                  key={subItem.path}
+                  to={subItem.path}
+                  className={({ isActive }) => 
+                    `sidebar-link text-sm ${isActive ? 'active' : ''} pl-8`
+                  }
+                  onClick={isMobile ? toggleMobile : undefined}
+                >
+                  <IconWrapper icon={subItem.icon} size={16} />
+                  <span>{subItem.name}</span>
+                </NavLink>
+              ))}
+            </motion.div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <NavLink
+        key={item.path}
+        to={item.path}
+        className={({ isActive }) => 
+          `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center' : ''}`
+        }
+        onClick={isMobile ? toggleMobile : undefined}
+      >
+        <IconWrapper icon={item.icon} size={20} />
+        {!collapsed && <span>{item.name}</span>}
+      </NavLink>
+    );
   };
 
   return (
@@ -117,19 +209,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         <div className="p-2">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => 
-                `sidebar-link ${isActive ? 'active' : ''}`
-              }
-              onClick={toggleMobile}
-            >
-              {renderIcon(item.icon, { size: 20 })}
-              <span>{item.name}</span>
-            </NavLink>
-          ))}
+          {navItems.map((item) => renderNavItem(item, true))}
 
           <button
             onClick={signOut}
@@ -169,18 +249,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
 
           <div className="space-y-1 flex-1">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) => 
-                  `sidebar-link ${isActive ? 'active' : ''} ${collapsed ? 'justify-center' : ''}`
-                }
-              >
-                <IconWrapper icon={item.icon} size={20} />
-                {!collapsed && <span>{item.name}</span>}
-              </NavLink>
-            ))}
+            {navItems.map((item) => renderNavItem(item))}
           </div>
           
           <div className="mt-auto pt-6 border-t border-gray-200">

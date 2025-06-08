@@ -62,6 +62,25 @@ interface University {
   created_by: string;
   created_at: string;
   updated_at: string;
+  min_gpa_required?: number;
+  sat_score_required?: string;
+  act_score_required?: string;
+  ielts_score_required?: string;
+  toefl_score_required?: string;
+  gre_score_required?: string;
+  gmat_score_required?: string;
+  application_deadline_fall?: string;
+  application_deadline_spring?: string;
+  application_deadline_summer?: string;
+  tuition_fee_graduate?: number;
+  scholarship_available?: boolean;
+  financial_aid_available?: boolean;
+  application_requirements?: string[];
+  admission_essay_required?: boolean;
+  letters_of_recommendation_required?: number;
+  interview_required?: boolean;
+  work_experience_required?: boolean;
+  portfolio_required?: boolean;
 }
 
 const Universities: React.FC = () => {
@@ -107,7 +126,26 @@ const Universities: React.FC = () => {
     ranking_type: '',
     ranking_year: '',
     featured: false,
-    verified: false
+    verified: false,
+    min_gpa_required: '',
+    sat_score_required: '',
+    act_score_required: '',
+    ielts_score_required: '',
+    toefl_score_required: '',
+    gre_score_required: '',
+    gmat_score_required: '',
+    application_deadline_fall: '',
+    application_deadline_spring: '',
+    application_deadline_summer: '',
+    tuition_fee_graduate: '',
+    scholarship_available: false,
+    financial_aid_available: false,
+    application_requirements: '',
+    admission_essay_required: false,
+    letters_of_recommendation_required: '',
+    interview_required: false,
+    work_experience_required: false,
+    portfolio_required: false
   });
   const [logoFile, setLogoFile] = useState<File | null>(null);
 
@@ -249,7 +287,26 @@ const Universities: React.FC = () => {
         ranking_type: formData.ranking_type.trim() || undefined,
         ranking_year: formData.ranking_year ? parseInt(formData.ranking_year) : undefined,
         featured: formData.featured,
-        verified: formData.verified
+        verified: formData.verified,
+        min_gpa_required: formData.min_gpa_required ? parseFloat(formData.min_gpa_required) : undefined,
+        sat_score_required: formData.sat_score_required.trim() || undefined,
+        act_score_required: formData.act_score_required.trim() || undefined,
+        ielts_score_required: formData.ielts_score_required.trim() || undefined,
+        toefl_score_required: formData.toefl_score_required.trim() || undefined,
+        gre_score_required: formData.gre_score_required.trim() || undefined,
+        gmat_score_required: formData.gmat_score_required.trim() || undefined,
+        application_deadline_fall: formData.application_deadline_fall.trim() || undefined,
+        application_deadline_spring: formData.application_deadline_spring.trim() || undefined,
+        application_deadline_summer: formData.application_deadline_summer.trim() || undefined,
+        tuition_fee_graduate: formData.tuition_fee_graduate ? parseInt(formData.tuition_fee_graduate) : undefined,
+        scholarship_available: formData.scholarship_available,
+        financial_aid_available: formData.financial_aid_available,
+        application_requirements: formData.application_requirements ? formData.application_requirements.split(',').map(r => r.trim()).filter(r => r) : [],
+        admission_essay_required: formData.admission_essay_required,
+        letters_of_recommendation_required: formData.letters_of_recommendation_required ? parseInt(formData.letters_of_recommendation_required) : undefined,
+        interview_required: formData.interview_required,
+        work_experience_required: formData.work_experience_required,
+        portfolio_required: formData.portfolio_required
       };
 
       let response;
@@ -332,7 +389,26 @@ const Universities: React.FC = () => {
       ranking_type: university.ranking_type || '',
       ranking_year: university.ranking_year ? university.ranking_year.toString() : '',
       featured: university.featured || false,
-      verified: university.verified || false
+      verified: university.verified || false,
+      min_gpa_required: university.min_gpa_required ? university.min_gpa_required.toString() : '',
+      sat_score_required: university.sat_score_required || '',
+      act_score_required: university.act_score_required || '',
+      ielts_score_required: university.ielts_score_required || '',
+      toefl_score_required: university.toefl_score_required || '',
+      gre_score_required: university.gre_score_required || '',
+      gmat_score_required: university.gmat_score_required || '',
+      application_deadline_fall: university.application_deadline_fall || '',
+      application_deadline_spring: university.application_deadline_spring || '',
+      application_deadline_summer: university.application_deadline_summer || '',
+      tuition_fee_graduate: university.tuition_fee_graduate ? university.tuition_fee_graduate.toString() : '',
+      scholarship_available: university.scholarship_available || false,
+      financial_aid_available: university.financial_aid_available || false,
+      application_requirements: university.application_requirements ? university.application_requirements.join(', ') : '',
+      admission_essay_required: university.admission_essay_required || false,
+      letters_of_recommendation_required: university.letters_of_recommendation_required ? university.letters_of_recommendation_required.toString() : '',
+      interview_required: university.interview_required || false,
+      work_experience_required: university.work_experience_required || false,
+      portfolio_required: university.portfolio_required || false
     });
     setIsModalOpen(true);
   };
@@ -380,7 +456,26 @@ const Universities: React.FC = () => {
       ranking_type: '',
       ranking_year: '',
       featured: false,
-      verified: false
+      verified: false,
+      min_gpa_required: '',
+      sat_score_required: '',
+      act_score_required: '',
+      ielts_score_required: '',
+      toefl_score_required: '',
+      gre_score_required: '',
+      gmat_score_required: '',
+      application_deadline_fall: '',
+      application_deadline_spring: '',
+      application_deadline_summer: '',
+      tuition_fee_graduate: '',
+      scholarship_available: false,
+      financial_aid_available: false,
+      application_requirements: '',
+      admission_essay_required: false,
+      letters_of_recommendation_required: '',
+      interview_required: false,
+      work_experience_required: false,
+      portfolio_required: false
     });
   };
 
@@ -911,14 +1006,12 @@ const Universities: React.FC = () => {
                             setLogoFile(file);
                             if (file) {
                               try {
-                                // Upload file to server
+                                // Upload file to Supabase storage via server
                                 const uploadResult = await uploadAPI.uploadImage(file);
                                 if (uploadResult.success) {
-                                  // Use the server URL
-                                  const serverUrl = `${process.env.NODE_ENV === 'production' 
-                                    ? 'https://edusmart-server.vercel.app' 
-                                    : 'http://localhost:8000'}${uploadResult.data.url}`;
-                                  setFormData({ ...formData, logo: serverUrl });
+                                  // Use the Supabase public URL directly
+                                  const supabaseUrl = uploadResult.data.url;
+                                  setFormData({ ...formData, logo: supabaseUrl });
                                   enqueueSnackbar('Logo uploaded successfully!', { variant: 'success' });
                                 } else {
                                   enqueueSnackbar(`Upload failed: ${uploadResult.error}`, { variant: 'error' });
@@ -1206,6 +1299,306 @@ const Universities: React.FC = () => {
                       />
                     </div>
 
+                    {/* Admission Requirements Section */}
+                    <div className="col-span-full">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        Admission Requirements
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Minimum GPA Required
+                        </label>
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0"
+                          max="4.0"
+                          value={formData.min_gpa_required}
+                          onChange={(e) => setFormData({ ...formData, min_gpa_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 3.5"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          SAT Score Required
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.sat_score_required}
+                          onChange={(e) => setFormData({ ...formData, sat_score_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 1200+ or 1200-1400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          ACT Score Required
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.act_score_required}
+                          onChange={(e) => setFormData({ ...formData, act_score_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 26+ or 26-30"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          IELTS Score Required
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.ielts_score_required}
+                          onChange={(e) => setFormData({ ...formData, ielts_score_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 6.5 or 6.5+"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          TOEFL Score Required
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.toefl_score_required}
+                          onChange={(e) => setFormData({ ...formData, toefl_score_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 80 or 80+"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          GRE Score Required
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.gre_score_required}
+                          onChange={(e) => setFormData({ ...formData, gre_score_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 310+ or 310-320"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          GMAT Score Required
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.gmat_score_required}
+                          onChange={(e) => setFormData({ ...formData, gmat_score_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 650+ or 650-700"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Letters of Recommendation Required
+                        </label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="10"
+                          value={formData.letters_of_recommendation_required}
+                          onChange={(e) => setFormData({ ...formData, letters_of_recommendation_required: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 2"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Application Deadlines Section */}
+                    <div className="col-span-full">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        Application Deadlines
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Fall Semester Deadline
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.application_deadline_fall}
+                          onChange={(e) => setFormData({ ...formData, application_deadline_fall: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., September 1, 2024"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Spring Semester Deadline
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.application_deadline_spring}
+                          onChange={(e) => setFormData({ ...formData, application_deadline_spring: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., January 15, 2024"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Summer Semester Deadline
+                        </label>
+                        <input
+                          type="text"
+                          value={formData.application_deadline_summer}
+                          onChange={(e) => setFormData({ ...formData, application_deadline_summer: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., May 1, 2024"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Financial Information Section */}
+                    <div className="col-span-full">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        Financial Information
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Graduate Tuition Fee (USD)
+                        </label>
+                        <input
+                          type="number"
+                          value={formData.tuition_fee_graduate}
+                          onChange={(e) => setFormData({ ...formData, tuition_fee_graduate: e.target.value })}
+                          className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                          placeholder="e.g., 55000"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Scholarship Available
+                        </label>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.scholarship_available}
+                            onChange={(e) => setFormData({ ...formData, scholarship_available: e.target.checked })}
+                            className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Yes, scholarships are available</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Financial Aid Available
+                        </label>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.financial_aid_available}
+                            onChange={(e) => setFormData({ ...formData, financial_aid_available: e.target.checked })}
+                            className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Yes, financial aid is available</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Requirements Section */}
+                    <div className="col-span-full">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4 border-b border-gray-200 pb-2">
+                        Additional Requirements
+                      </h3>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Application Requirements (comma-separated)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={formData.application_requirements}
+                        onChange={(e) => setFormData({ ...formData, application_requirements: e.target.value })}
+                        className="w-full px-4 py-3 border border-gray-300/50 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white/70 backdrop-blur-sm transition-all duration-300"
+                        placeholder="Transcripts, Personal Statement, Resume, Portfolio..."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Admission Essay Required
+                        </label>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.admission_essay_required}
+                            onChange={(e) => setFormData({ ...formData, admission_essay_required: e.target.checked })}
+                            className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Required</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Interview Required
+                        </label>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.interview_required}
+                            onChange={(e) => setFormData({ ...formData, interview_required: e.target.checked })}
+                            className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Required</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Work Experience Required
+                        </label>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.work_experience_required}
+                            onChange={(e) => setFormData({ ...formData, work_experience_required: e.target.checked })}
+                            className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Required</span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Portfolio Required
+                        </label>
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.portfolio_required}
+                            onChange={(e) => setFormData({ ...formData, portfolio_required: e.target.checked })}
+                            className="w-5 h-5 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500 focus:ring-2"
+                          />
+                          <span className="ml-2 text-sm text-gray-700">Required</span>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Featured
@@ -1267,290 +1660,617 @@ const Universities: React.FC = () => {
               exit={{ opacity: 0 }}
             >
               <motion.div 
-                className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl border border-gray-200/50"
+                className="bg-white rounded-2xl max-w-7xl w-full max-h-[95vh] overflow-y-auto shadow-2xl border border-gray-200/50"
                 initial={{ scale: 0.9, opacity: 0, y: 50 }}
                 animate={{ scale: 1, opacity: 1, y: 0 }}
                 exit={{ scale: 0.9, opacity: 0, y: 50 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
               >
-                <div className="p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                      University Details
-                    </h2>
-                    <motion.button
-                      onClick={handleCloseViewModal}
-                      className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all duration-300"
-                      whileHover={{ scale: 1.1, rotate: 90 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      ✕
-                    </motion.button>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    {/* University Header */}
-                    <div className="flex flex-col md:flex-row gap-6">
-                      <div className="w-full md:w-1/3">
-                        {viewingUniversity.image || viewingUniversity.logo ? (
+                <div className="sticky top-0 bg-white/95 backdrop-blur-md border-b border-gray-200/50 p-6 z-10">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
+                        {viewingUniversity.logo ? (
                           <img 
-                            src={viewingUniversity.image || viewingUniversity.logo} 
+                            src={viewingUniversity.logo} 
                             alt={viewingUniversity.name}
-                            className="w-full h-48 object-cover rounded-xl"
+                            className="w-full h-full object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              if (target.src === viewingUniversity.image && viewingUniversity.logo) {
-                                target.src = viewingUniversity.logo;
-                              } else {
-                                target.style.display = 'none';
-                                target.nextElementSibling?.classList.remove('hidden');
-                              }
+                              target.style.display = 'none';
+                              target.nextElementSibling?.classList.remove('hidden');
                             }}
                           />
                         ) : null}
-                        <div className={`w-full h-48 bg-gradient-to-br from-purple-400 to-indigo-500 rounded-xl flex items-center justify-center ${viewingUniversity.image || viewingUniversity.logo ? 'hidden' : ''}`}>
-                          <IconWrapper icon={FaUniversity} className="text-white text-4xl" />
-                        </div>
+                        <IconWrapper icon={FaUniversity} className={`text-white text-2xl ${viewingUniversity.logo ? 'hidden' : ''}`} />
                       </div>
-                      
-                      <div className="flex-1">
-                        <h3 className="text-2xl font-bold text-gray-900 mb-2">{viewingUniversity.name}</h3>
-                        
-                        <div className="flex items-center gap-2 mb-4">
-                          <IconWrapper icon={FaMapMarkerAlt} className="text-purple-500" />
+                      <div>
+                        <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                          {viewingUniversity.name}
+                        </h2>
+                        <div className="flex items-center gap-2 mt-1">
+                          <IconWrapper icon={FaMapMarkerAlt} className="text-purple-500 text-sm" />
                           <span className="text-gray-600">
                             {viewingUniversity.city}, {viewingUniversity.country}
-                            {viewingUniversity.state && `, ${viewingUniversity.state}`}
                           </span>
-                        </div>
-
-                        {viewingUniversity.ranking && (
-                          <div className="mb-4">
-                            <span className="px-3 py-1 bg-yellow-500 text-white text-sm font-bold rounded-full">
-                              World Ranking: #{viewingUniversity.ranking}
+                          {viewingUniversity.ranking && (
+                            <span className="ml-4 px-3 py-1 bg-yellow-500 text-white text-sm font-bold rounded-full">
+                              #{viewingUniversity.ranking}
                             </span>
-                          </div>
-                        )}
-
-                        {viewingUniversity.description && (
-                          <p className="text-gray-700 mb-4">{viewingUniversity.description}</p>
-                        )}
-
-                        <div className="flex flex-wrap gap-2 mb-4">
-                          {viewingUniversity.featured && (
-                            <span className="px-3 py-1 bg-purple-100 text-purple-800 text-sm rounded-full">Featured</span>
-                          )}
-                          {viewingUniversity.verified && (
-                            <span className="px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full">Verified</span>
                           )}
                         </div>
                       </div>
                     </div>
+                    <motion.button
+                      onClick={handleCloseViewModal}
+                      className="p-3 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-all duration-300"
+                      whileHover={{ scale: 1.1, rotate: 90 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </motion.button>
+                  </div>
+                </div>
+                
+                <div className="p-8 space-y-8">
+                  {/* Hero Section with Image */}
+                  {viewingUniversity.image && (
+                    <motion.div 
+                      className="relative h-64 rounded-2xl overflow-hidden"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <img 
+                        src={viewingUniversity.image} 
+                        alt={viewingUniversity.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
+                      <div className="absolute bottom-6 left-6 text-white">
+                        <div className="flex flex-wrap gap-2">
+                          {viewingUniversity.featured && (
+                            <span className="px-3 py-1 bg-purple-500/80 backdrop-blur-md text-white text-sm rounded-full font-medium">
+                              <IconWrapper icon={FaStar} className="inline mr-1" />
+                              Featured
+                            </span>
+                          )}
+                          {viewingUniversity.verified && (
+                            <span className="px-3 py-1 bg-green-500/80 backdrop-blur-md text-white text-sm rounded-full font-medium">
+                              ✓ Verified
+                            </span>
+                          )}
+                          {viewingUniversity.type && (
+                            <span className="px-3 py-1 bg-blue-500/80 backdrop-blur-md text-white text-sm rounded-full font-medium">
+                              {viewingUniversity.type}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
 
-                    {/* University Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {viewingUniversity.established_year && (
-                        <div className="bg-blue-50 p-4 rounded-xl">
-                          <div className="flex items-center gap-3 mb-2">
-                            <IconWrapper icon={FaCalendarAlt} className="text-blue-600" />
-                            <h4 className="font-semibold text-blue-800">Established</h4>
-                          </div>
-                          <p className="text-2xl font-bold text-blue-900">{viewingUniversity.established_year}</p>
-                        </div>
-                      )}
-                      
-                      {viewingUniversity.student_population && (
-                        <div className="bg-green-50 p-4 rounded-xl">
-                          <div className="flex items-center gap-3 mb-2">
-                            <IconWrapper icon={FaUsers} className="text-green-600" />
-                            <h4 className="font-semibold text-green-800">Students</h4>
-                          </div>
-                          <p className="text-2xl font-bold text-green-900">{viewingUniversity.student_population.toLocaleString()}</p>
-                        </div>
-                      )}
-                      
-                      {viewingUniversity.acceptance_rate && (
-                        <div className="bg-orange-50 p-4 rounded-xl">
-                          <div className="flex items-center gap-3 mb-2">
-                            <IconWrapper icon={FaChartLine} className="text-orange-600" />
-                            <h4 className="font-semibold text-orange-800">Acceptance Rate</h4>
-                          </div>
-                          <p className="text-2xl font-bold text-orange-900">{viewingUniversity.acceptance_rate}%</p>
-                        </div>
-                      )}
-                    </div>
+                  {/* Description */}
+                  {viewingUniversity.description && (
+                    <motion.div 
+                      className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <h3 className="text-xl font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                        <IconWrapper icon={FaUniversity} className="text-blue-600" />
+                        About the University
+                      </h3>
+                      <p className="text-gray-700 leading-relaxed">{viewingUniversity.description}</p>
+                    </motion.div>
+                  )}
 
-                    {/* Additional Information */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Contact Information */}
-                      <div className="bg-gray-50 p-6 rounded-xl">
-                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h4>
-                        <div className="space-y-3">
-                          {viewingUniversity.website && (
-                            <div className="flex items-center gap-3">
-                              <IconWrapper icon={FaGlobe} className="text-purple-500" />
+                  {/* Key Statistics */}
+                  <motion.div 
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                  >
+                    {viewingUniversity.established_year && (
+                      <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-2xl text-white">
+                        <div className="flex items-center gap-3 mb-2">
+                          <IconWrapper icon={FaCalendarAlt} className="text-blue-100 text-xl" />
+                          <h4 className="font-semibold text-blue-100">Founded</h4>
+                        </div>
+                        <p className="text-3xl font-bold">{viewingUniversity.established_year}</p>
+                      </div>
+                    )}
+                    
+                    {viewingUniversity.student_population && (
+                      <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl text-white">
+                        <div className="flex items-center gap-3 mb-2">
+                          <IconWrapper icon={FaUsers} className="text-green-100 text-xl" />
+                          <h4 className="font-semibold text-green-100">Students</h4>
+                        </div>
+                        <p className="text-3xl font-bold">{viewingUniversity.student_population.toLocaleString()}</p>
+                      </div>
+                    )}
+                    
+                    {viewingUniversity.acceptance_rate && (
+                      <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-2xl text-white">
+                        <div className="flex items-center gap-3 mb-2">
+                          <IconWrapper icon={FaChartLine} className="text-orange-100 text-xl" />
+                          <h4 className="font-semibold text-orange-100">Acceptance Rate</h4>
+                        </div>
+                        <p className="text-3xl font-bold">{viewingUniversity.acceptance_rate}%</p>
+                      </div>
+                    )}
+
+                    {viewingUniversity.faculty_count && (
+                      <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-2xl text-white">
+                        <div className="flex items-center gap-3 mb-2">
+                          <IconWrapper icon={FaGraduationCap} className="text-purple-100 text-xl" />
+                          <h4 className="font-semibold text-purple-100">Faculty</h4>
+                        </div>
+                        <p className="text-3xl font-bold">{viewingUniversity.faculty_count.toLocaleString()}</p>
+                      </div>
+                    )}
+                  </motion.div>
+
+                  {/* Contact & Location Information */}
+                  <motion.div 
+                    className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4 }}
+                  >
+                    <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-lg">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <IconWrapper icon={FaGlobe} className="text-blue-600" />
+                        Contact Information
+                      </h3>
+                      <div className="space-y-4">
+                        {viewingUniversity.website && (
+                          <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+                            <IconWrapper icon={FaGlobe} className="text-blue-600" />
+                            <div>
+                              <p className="text-sm text-blue-600 font-medium">Website</p>
                               <a 
                                 href={viewingUniversity.website} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="text-purple-600 hover:text-purple-800 underline"
+                                className="text-blue-700 hover:text-blue-900 underline font-medium"
                               >
-                                Visit Website
+                                Visit Official Website
                               </a>
                             </div>
-                          )}
-                          {viewingUniversity.contact_email && (
-                            <div className="flex items-center gap-3">
-                              <IconWrapper icon={FaGlobe} className="text-blue-500" />
-                              <span className="text-gray-700">{viewingUniversity.contact_email}</span>
+                          </div>
+                        )}
+                        {viewingUniversity.contact_email && (
+                          <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
+                            <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/>
+                              <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/>
+                            </svg>
+                            <div>
+                              <p className="text-sm text-green-600 font-medium">Email</p>
+                              <a 
+                                href={`mailto:${viewingUniversity.contact_email}`}
+                                className="text-green-700 hover:text-green-900 underline font-medium"
+                              >
+                                {viewingUniversity.contact_email}
+                              </a>
                             </div>
-                          )}
-                          {viewingUniversity.contact_phone && (
-                            <div className="flex items-center gap-3">
-                              <IconWrapper icon={FaGlobe} className="text-green-500" />
-                              <span className="text-gray-700">{viewingUniversity.contact_phone}</span>
+                          </div>
+                        )}
+                        {viewingUniversity.contact_phone && (
+                          <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
+                            <svg className="w-5 h-5 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"/>
+                            </svg>
+                            <div>
+                              <p className="text-sm text-purple-600 font-medium">Phone</p>
+                              <a 
+                                href={`tel:${viewingUniversity.contact_phone}`}
+                                className="text-purple-700 hover:text-purple-900 underline font-medium"
+                              >
+                                {viewingUniversity.contact_phone}
+                              </a>
                             </div>
-                          )}
-                          {viewingUniversity.address && (
-                            <div className="flex items-start gap-3">
-                              <IconWrapper icon={FaMapMarkerAlt} className="text-red-500 mt-1" />
-                              <span className="text-gray-700">{viewingUniversity.address}</span>
-                            </div>
-                          )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="bg-white border border-gray-200 p-6 rounded-2xl shadow-lg">
+                      <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                        <IconWrapper icon={FaMapMarkerAlt} className="text-red-600" />
+                        Location & Campus
+                      </h3>
+                      <div className="space-y-4">
+                        <div className="p-3 bg-red-50 rounded-xl">
+                          <p className="text-sm text-red-600 font-medium mb-1">Address</p>
+                          <p className="text-gray-700">
+                            {viewingUniversity.address || `${viewingUniversity.city}, ${viewingUniversity.state ? viewingUniversity.state + ', ' : ''}${viewingUniversity.country}`}
+                          </p>
+                        </div>
+                        {viewingUniversity.campus_size && (
+                          <div className="p-3 bg-blue-50 rounded-xl">
+                            <p className="text-sm text-blue-600 font-medium mb-1">Campus Size</p>
+                            <p className="text-gray-700">{viewingUniversity.campus_size}</p>
+                          </div>
+                        )}
+                        {viewingUniversity.campus_type && (
+                          <div className="p-3 bg-green-50 rounded-xl">
+                            <p className="text-sm text-green-600 font-medium mb-1">Campus Type</p>
+                            <p className="text-gray-700">{viewingUniversity.campus_type}</p>
+                          </div>
+                        )}
+                        {viewingUniversity.region && (
+                          <div className="p-3 bg-purple-50 rounded-xl">
+                            <p className="text-sm text-purple-600 font-medium mb-1">Region</p>
+                            <p className="text-gray-700">{viewingUniversity.region}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  {/* Academic Information */}
+                  <motion.div 
+                    className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-2xl border border-indigo-100"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.5 }}
+                  >
+                    <h3 className="text-xl font-semibold text-indigo-900 mb-6 flex items-center gap-2">
+                      <IconWrapper icon={FaGraduationCap} className="text-indigo-600" />
+                      Academic Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {viewingUniversity.accreditation && (
+                        <div className="bg-white p-4 rounded-xl border border-indigo-200">
+                          <p className="text-sm text-indigo-600 font-medium mb-1">Accreditation</p>
+                          <p className="text-gray-700 font-semibold">{viewingUniversity.accreditation}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.ranking_type && (
+                        <div className="bg-white p-4 rounded-xl border border-indigo-200">
+                          <p className="text-sm text-indigo-600 font-medium mb-1">Ranking System</p>
+                          <p className="text-gray-700 font-semibold">{viewingUniversity.ranking_type}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.ranking_year && (
+                        <div className="bg-white p-4 rounded-xl border border-indigo-200">
+                          <p className="text-sm text-indigo-600 font-medium mb-1">Ranking Year</p>
+                          <p className="text-gray-700 font-semibold">{viewingUniversity.ranking_year}</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+
+                  {/* Programs Offered */}
+                  {viewingUniversity.programs_offered && viewingUniversity.programs_offered.length > 0 && (
+                    <motion.div 
+                      className="bg-gradient-to-r from-green-50 to-emerald-50 p-6 rounded-2xl border border-green-100"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      <h3 className="text-xl font-semibold text-green-900 mb-4 flex items-center gap-2">
+                        <IconWrapper icon={FaRocket} className="text-green-600" />
+                        Programs Offered ({viewingUniversity.programs_offered.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {viewingUniversity.programs_offered.map((program, index) => (
+                          <div 
+                            key={index}
+                            className="bg-white p-3 rounded-xl border border-green-200 hover:shadow-md transition-shadow duration-300"
+                          >
+                            <span className="text-green-800 font-medium">{program}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Facilities */}
+                  {viewingUniversity.facilities && viewingUniversity.facilities.length > 0 && (
+                    <motion.div 
+                      className="bg-gradient-to-r from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-100"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.7 }}
+                    >
+                      <h3 className="text-xl font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                        <svg className="w-6 h-6 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2H4zm2 3a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd"/>
+                        </svg>
+                        Campus Facilities ({viewingUniversity.facilities.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {viewingUniversity.facilities.map((facility, index) => (
+                          <div 
+                            key={index}
+                            className="bg-white p-3 rounded-xl border border-blue-200 hover:shadow-md transition-shadow duration-300"
+                          >
+                            <span className="text-blue-800 font-medium">{facility}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Financial Information */}
+                  <motion.div 
+                    className="bg-gradient-to-r from-yellow-50 to-orange-50 p-6 rounded-2xl border border-yellow-100"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                  >
+                    <h3 className="text-xl font-semibold text-yellow-900 mb-6 flex items-center gap-2">
+                      <svg className="w-6 h-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd"/>
+                      </svg>
+                      Financial Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {viewingUniversity.tuition_fee && (
+                        <div className="bg-white p-4 rounded-xl border border-yellow-200">
+                          <p className="text-sm text-yellow-600 font-medium mb-1">Undergraduate Tuition</p>
+                          <p className="text-2xl font-bold text-yellow-800">${viewingUniversity.tuition_fee.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">per year</p>
+                        </div>
+                      )}
+                      {viewingUniversity.tuition_fee_graduate && (
+                        <div className="bg-white p-4 rounded-xl border border-yellow-200">
+                          <p className="text-sm text-yellow-600 font-medium mb-1">Graduate Tuition</p>
+                          <p className="text-2xl font-bold text-yellow-800">${viewingUniversity.tuition_fee_graduate.toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">per year</p>
+                        </div>
+                      )}
+                      {viewingUniversity.application_fee && (
+                        <div className="bg-white p-4 rounded-xl border border-yellow-200">
+                          <p className="text-sm text-yellow-600 font-medium mb-1">Application Fee</p>
+                          <p className="text-2xl font-bold text-yellow-800">${viewingUniversity.application_fee.toLocaleString()}</p>
+                        </div>
+                      )}
+                      <div className="bg-white p-4 rounded-xl border border-yellow-200">
+                        <p className="text-sm text-yellow-600 font-medium mb-2">Financial Aid</p>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${viewingUniversity.scholarship_available ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                            <span className="text-sm text-gray-700">Scholarships</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${viewingUniversity.financial_aid_available ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                            <span className="text-sm text-gray-700">Financial Aid</span>
+                          </div>
                         </div>
                       </div>
+                    </div>
+                  </motion.div>
 
-                      {/* Academic Information */}
-                      <div className="bg-gray-50 p-6 rounded-xl">
-                        <h4 className="text-lg font-semibold text-gray-900 mb-4">Academic Information</h4>
-                        <div className="space-y-3">
-                          {viewingUniversity.type && (
-                            <div>
-                              <span className="font-medium text-gray-700">Type: </span>
-                              <span className="text-gray-600">{viewingUniversity.type}</span>
-                            </div>
-                          )}
-                          {viewingUniversity.faculty_count && (
-                            <div>
-                              <span className="font-medium text-gray-700">Faculty: </span>
-                              <span className="text-gray-600">{viewingUniversity.faculty_count.toLocaleString()}</span>
-                            </div>
-                          )}
-                          {viewingUniversity.campus_size && (
-                            <div>
-                              <span className="font-medium text-gray-700">Campus Size: </span>
-                              <span className="text-gray-600">{viewingUniversity.campus_size}</span>
-                            </div>
-                          )}
-                          {viewingUniversity.campus_type && (
-                            <div>
-                              <span className="font-medium text-gray-700">Campus Type: </span>
-                              <span className="text-gray-600">{viewingUniversity.campus_type}</span>
-                            </div>
-                          )}
-                          {viewingUniversity.accreditation && (
-                            <div>
-                              <span className="font-medium text-gray-700">Accreditation: </span>
-                              <span className="text-gray-600">{viewingUniversity.accreditation}</span>
-                            </div>
-                          )}
+                  {/* Admission Requirements */}
+                  <motion.div 
+                    className="bg-gradient-to-r from-red-50 to-pink-50 p-6 rounded-2xl border border-red-100"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.9 }}
+                  >
+                    <h3 className="text-xl font-semibold text-red-900 mb-6 flex items-center gap-2">
+                      <svg className="w-6 h-6 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z" clipRule="evenodd"/>
+                        <path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z"/>
+                      </svg>
+                      Admission Requirements
+                    </h3>
+                    
+                    {/* Test Score Requirements */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                      {viewingUniversity.min_gpa_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">Minimum GPA</p>
+                          <p className="text-2xl font-bold text-red-800">{viewingUniversity.min_gpa_required}</p>
+                          <p className="text-xs text-gray-500">out of 4.0</p>
+                        </div>
+                      )}
+                      {viewingUniversity.sat_score_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">SAT Score</p>
+                          <p className="text-lg font-bold text-red-800">{viewingUniversity.sat_score_required}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.act_score_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">ACT Score</p>
+                          <p className="text-lg font-bold text-red-800">{viewingUniversity.act_score_required}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.ielts_score_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">IELTS Score</p>
+                          <p className="text-lg font-bold text-red-800">{viewingUniversity.ielts_score_required}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.toefl_score_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">TOEFL Score</p>
+                          <p className="text-lg font-bold text-red-800">{viewingUniversity.toefl_score_required}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.gre_score_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">GRE Score</p>
+                          <p className="text-lg font-bold text-red-800">{viewingUniversity.gre_score_required}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.gmat_score_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">GMAT Score</p>
+                          <p className="text-lg font-bold text-red-800">{viewingUniversity.gmat_score_required}</p>
+                        </div>
+                      )}
+                      {viewingUniversity.letters_of_recommendation_required && (
+                        <div className="bg-white p-4 rounded-xl border border-red-200">
+                          <p className="text-sm text-red-600 font-medium mb-1">Letters of Recommendation</p>
+                          <p className="text-2xl font-bold text-red-800">{viewingUniversity.letters_of_recommendation_required}</p>
+                          <p className="text-xs text-gray-500">required</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Additional Requirements */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                      <div className="bg-white p-4 rounded-xl border border-red-200">
+                        <p className="text-sm text-red-600 font-medium mb-2">Admission Essay</p>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${viewingUniversity.admission_essay_required ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-sm text-gray-700">{viewingUniversity.admission_essay_required ? 'Required' : 'Not Required'}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-red-200">
+                        <p className="text-sm text-red-600 font-medium mb-2">Interview</p>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${viewingUniversity.interview_required ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-sm text-gray-700">{viewingUniversity.interview_required ? 'Required' : 'Not Required'}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-red-200">
+                        <p className="text-sm text-red-600 font-medium mb-2">Work Experience</p>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${viewingUniversity.work_experience_required ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-sm text-gray-700">{viewingUniversity.work_experience_required ? 'Required' : 'Not Required'}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white p-4 rounded-xl border border-red-200">
+                        <p className="text-sm text-red-600 font-medium mb-2">Portfolio</p>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${viewingUniversity.portfolio_required ? 'bg-red-500' : 'bg-gray-300'}`}></div>
+                          <span className="text-sm text-gray-700">{viewingUniversity.portfolio_required ? 'Required' : 'Not Required'}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Programs Offered */}
-                    {viewingUniversity.programs_offered && viewingUniversity.programs_offered.length > 0 && (
-                      <div className="bg-indigo-50 p-6 rounded-xl">
-                        <h4 className="text-lg font-semibold text-indigo-900 mb-4">Programs Offered</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {viewingUniversity.programs_offered.map((program, index) => (
-                            <span 
-                              key={index}
-                              className="px-3 py-1 bg-indigo-200 text-indigo-800 text-sm rounded-full font-medium"
-                            >
-                              {program}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Facilities */}
-                    {viewingUniversity.facilities && viewingUniversity.facilities.length > 0 && (
-                      <div className="bg-green-50 p-6 rounded-xl">
-                        <h4 className="text-lg font-semibold text-green-900 mb-4">Facilities</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {viewingUniversity.facilities.map((facility, index) => (
-                            <span 
-                              key={index}
-                              className="px-3 py-1 bg-green-200 text-green-800 text-sm rounded-full font-medium"
-                            >
-                              {facility}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notable Alumni */}
-                    {viewingUniversity.notable_alumni && viewingUniversity.notable_alumni.length > 0 && (
-                      <div className="bg-yellow-50 p-6 rounded-xl">
-                        <h4 className="text-lg font-semibold text-yellow-900 mb-4">Notable Alumni</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {viewingUniversity.notable_alumni.map((alumni, index) => (
-                            <span 
-                              key={index}
-                              className="px-3 py-1 bg-yellow-200 text-yellow-800 text-sm rounded-full font-medium"
-                            >
-                              {alumni}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Financial Information */}
-                    {(viewingUniversity.tuition_fee || viewingUniversity.application_fee) && (
-                      <div className="bg-purple-50 p-6 rounded-xl">
-                        <h4 className="text-lg font-semibold text-purple-900 mb-4">Financial Information</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {viewingUniversity.tuition_fee && (
-                            <div>
-                              <span className="font-medium text-purple-700">Tuition Fee: </span>
-                              <span className="text-purple-600">${viewingUniversity.tuition_fee.toLocaleString()}</span>
+                    {/* Application Requirements */}
+                    {viewingUniversity.application_requirements && viewingUniversity.application_requirements.length > 0 && (
+                      <div className="bg-white p-4 rounded-xl border border-red-200">
+                        <p className="text-sm text-red-600 font-medium mb-3">Application Requirements</p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                          {viewingUniversity.application_requirements.map((requirement, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                              <span className="text-sm text-gray-700">{requirement}</span>
                             </div>
-                          )}
-                          {viewingUniversity.application_fee && (
-                            <div>
-                              <span className="font-medium text-purple-700">Application Fee: </span>
-                              <span className="text-purple-600">${viewingUniversity.application_fee.toLocaleString()}</span>
-                            </div>
-                          )}
+                          ))}
                         </div>
                       </div>
                     )}
+                  </motion.div>
 
-                    {/* Action Buttons */}
-                    <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
+                  {/* Application Deadlines */}
+                  {(viewingUniversity.application_deadline_fall || viewingUniversity.application_deadline_spring || viewingUniversity.application_deadline_summer) && (
+                    <motion.div 
+                      className="bg-gradient-to-r from-purple-50 to-indigo-50 p-6 rounded-2xl border border-purple-100"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.0 }}
+                    >
+                      <h3 className="text-xl font-semibold text-purple-900 mb-4 flex items-center gap-2">
+                        <IconWrapper icon={FaCalendarAlt} className="text-purple-600" />
+                        Application Deadlines
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {viewingUniversity.application_deadline_fall && (
+                          <div className="bg-white p-4 rounded-xl border border-purple-200">
+                            <p className="text-sm text-purple-600 font-medium mb-1">Fall Semester</p>
+                            <p className="text-lg font-bold text-purple-800">{viewingUniversity.application_deadline_fall}</p>
+                          </div>
+                        )}
+                        {viewingUniversity.application_deadline_spring && (
+                          <div className="bg-white p-4 rounded-xl border border-purple-200">
+                            <p className="text-sm text-purple-600 font-medium mb-1">Spring Semester</p>
+                            <p className="text-lg font-bold text-purple-800">{viewingUniversity.application_deadline_spring}</p>
+                          </div>
+                        )}
+                        {viewingUniversity.application_deadline_summer && (
+                          <div className="bg-white p-4 rounded-xl border border-purple-200">
+                            <p className="text-sm text-purple-600 font-medium mb-1">Summer Semester</p>
+                            <p className="text-lg font-bold text-purple-800">{viewingUniversity.application_deadline_summer}</p>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Notable Alumni */}
+                  {viewingUniversity.notable_alumni && viewingUniversity.notable_alumni.length > 0 && (
+                    <motion.div 
+                      className="bg-gradient-to-r from-amber-50 to-yellow-50 p-6 rounded-2xl border border-amber-100"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 1.1 }}
+                    >
+                      <h3 className="text-xl font-semibold text-amber-900 mb-4 flex items-center gap-2">
+                        <IconWrapper icon={FaStar} className="text-amber-600" />
+                        Notable Alumni ({viewingUniversity.notable_alumni.length})
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {viewingUniversity.notable_alumni.map((alumni, index) => (
+                          <div 
+                            key={index}
+                            className="bg-white p-3 rounded-xl border border-amber-200 hover:shadow-md transition-shadow duration-300"
+                          >
+                            <span className="text-amber-800 font-medium">{alumni}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <motion.div 
+                    className="flex flex-col sm:flex-row justify-between items-center gap-4 pt-8 border-t border-gray-200"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 1.2 }}
+                  >
+                    <div className="flex flex-wrap gap-3">
+                      {viewingUniversity.website && (
+                        <motion.a
+                          href={viewingUniversity.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 flex items-center gap-2 font-medium shadow-lg"
+                          whileHover={{ scale: 1.02, y: -2 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <IconWrapper icon={FaGlobe} />
+                          Visit Website
+                        </motion.a>
+                      )}
                       <motion.button
-                        onClick={() => handleEdit(viewingUniversity)}
-                        className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all duration-300 flex items-center gap-2"
-                        whileHover={{ scale: 1.02 }}
+                        onClick={() => {
+                          handleCloseViewModal();
+                          handleEdit(viewingUniversity);
+                        }}
+                        className="px-6 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl hover:from-purple-600 hover:to-purple-700 transition-all duration-300 flex items-center gap-2 font-medium shadow-lg"
+                        whileHover={{ scale: 1.02, y: -2 }}
                         whileTap={{ scale: 0.98 }}
                       >
                         <IconWrapper icon={FaEdit} />
                         Edit University
                       </motion.button>
-                      <motion.button
-                        onClick={handleCloseViewModal}
-                        className="px-6 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        Close
-                      </motion.button>
                     </div>
-                  </div>
+                    <motion.button
+                      onClick={handleCloseViewModal}
+                      className="px-8 py-3 text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all duration-300 font-medium"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      Close
+                    </motion.button>
+                  </motion.div>
                 </div>
               </motion.div>
             </motion.div>

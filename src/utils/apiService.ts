@@ -2,9 +2,7 @@ import axios from 'axios';
 import { useAuth } from './AuthContext';
 
 // Environment-aware base URL configuration
-const BASE_URL = process.env.NODE_ENV === 'production' 
-  ? 'https://edusmart-server.vercel.app'
-  : process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const BASE_URL = 'https://edusmart-server.vercel.app'; // Temporarily using deployed server for all environments
 
 // Helper function to make API calls
 const apiCall = async (method: string, endpoint: string, data: any = null, adminUid?: string) => {
