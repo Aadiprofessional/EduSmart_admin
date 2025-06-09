@@ -52,7 +52,7 @@ const FileUpload: React.FC<FileUploadProps> = ({
     setIsUploading(true);
 
     try {
-      // Create preview
+      // Create preview only for display purposes - don't pass this to parent
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -60,12 +60,13 @@ const FileUpload: React.FC<FileUploadProps> = ({
         };
         reader.readAsDataURL(file);
       } else if (file.type.startsWith('video/')) {
-        // For videos, create object URL
+        // For videos, create object URL for preview only
         const videoUrl = URL.createObjectURL(file);
         setPreview(videoUrl);
       }
 
-      // Pass the file to the parent component
+      // Pass the actual File object to the parent component
+      // The parent is responsible for uploading and getting the real URL
       onFileSelect(file);
     } catch (error) {
       setError('Failed to process file');

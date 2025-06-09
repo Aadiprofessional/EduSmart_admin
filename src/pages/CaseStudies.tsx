@@ -574,9 +574,7 @@ const CaseStudies: React.FC = () => {
                             } catch (error) {
                               console.error('Upload error:', error);
                               enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
-                              // Fallback to temporary URL for preview
-                              const tempUrl = URL.createObjectURL(file);
-                              setFormData({...formData, student_image: tempUrl});
+                              // Don't set any URL if upload fails
                             }
                           } else {
                             setFormData({...formData, student_image: ''});

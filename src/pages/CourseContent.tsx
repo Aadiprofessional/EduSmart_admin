@@ -23,7 +23,8 @@ import {
   FaClock,
   FaGraduationCap,
   FaCheckCircle,
-  FaTimesCircle
+  FaTimesCircle,
+  FaRobot
 } from 'react-icons/fa';
 import { useSnackbar } from 'notistack';
 import MainLayout from '../components/layout/MainLayout';
@@ -80,6 +81,7 @@ interface CourseLecture {
   lecture_order: number;
   is_preview: boolean;
   is_free: boolean;
+  summary?: string;
 }
 
 interface Enrollment {
@@ -142,8 +144,12 @@ const CourseContent: React.FC = () => {
     resource_url: '',
     lecture_order: 1,
     is_preview: false,
-    is_free: false
+    is_free: false,
+    summary: ''
   });
+
+  // AI Summary state
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   useEffect(() => {
     if (courseId) {
@@ -213,8 +219,16 @@ const CourseContent: React.FC = () => {
       
       const method = editingSection ? 'PUT' : 'POST';
       
+      // Calculate next section order if creating new section
+      let sectionOrder = sectionForm.section_order;
+      if (!editingSection) {
+        const maxOrder = sections.length > 0 ? Math.max(...sections.map(s => s.section_order)) : 0;
+        sectionOrder = maxOrder + 1;
+      }
+      
       const requestBody = {
         ...sectionForm,
+        section_order: sectionOrder,
         uid: profile?.id
       };
       
@@ -250,7 +264,7 @@ const CourseContent: React.FC = () => {
     setConfirmMessage('Are you sure you want to delete this section? This will also delete all lectures in this section.');
     setConfirmAction(() => async () => {
       try {
-        const response = await fetch(`${API_BASE}/sections/${sectionId}`, {
+        const response = await fetch(`${API_BASE}/sections/${sectionId}?uid=${profile?.id}`, {
           method: 'DELETE',
         });
 
@@ -282,8 +296,18 @@ const CourseContent: React.FC = () => {
       
       const method = editingLecture ? 'PUT' : 'POST';
       
+      // Calculate next lecture order if creating new lecture
+      let lectureOrder = lectureForm.lecture_order;
+      if (!editingLecture && selectedSectionId) {
+        const selectedSection = sections.find(s => s.id === selectedSectionId);
+        const existingLectures = selectedSection?.course_lectures || [];
+        const maxOrder = existingLectures.length > 0 ? Math.max(...existingLectures.map(l => l.lecture_order)) : 0;
+        lectureOrder = maxOrder + 1;
+      }
+      
       const requestBody = {
         ...lectureForm,
+        lecture_order: lectureOrder,
         uid: profile?.id
       };
       
@@ -315,7 +339,8 @@ const CourseContent: React.FC = () => {
           resource_url: '',
           lecture_order: 1,
           is_preview: false,
-          is_free: false
+          is_free: false,
+          summary: ''
         });
         await fetchCourseSections();
       } else {
@@ -331,7 +356,7 @@ const CourseContent: React.FC = () => {
     setConfirmMessage('Are you sure you want to delete this lecture?');
     setConfirmAction(() => async () => {
       try {
-        const response = await fetch(`${API_BASE}/lectures/${lectureId}`, {
+        const response = await fetch(`${API_BASE}/lectures/${lectureId}?uid=${profile?.id}`, {
           method: 'DELETE',
         });
 
@@ -376,6 +401,45 @@ const CourseContent: React.FC = () => {
         ? prev.filter(id => id !== sectionId)
         : [...prev, sectionId]
     );
+  };
+
+  // AI Summary generation function
+  const generateVideoSummary = async (videoUrl: string) => {
+    if (!videoUrl) {
+      enqueueSnackbar('Please upload a video first', { variant: 'error' });
+      return;
+    }
+
+    setIsGeneratingSummary(true);
+    
+    try {
+      const response = await fetch(`${API_BASE}/generate-video-summary`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          videoUrl: videoUrl
+        })
+      });
+
+      const data = await response.json();
+      
+      if (data.success && data.data.summary) {
+        setLectureForm({ ...lectureForm, summary: data.data.summary });
+        enqueueSnackbar('AI summary generated successfully!', { variant: 'success' });
+      } else {
+        throw new Error(data.error || 'Failed to generate summary');
+      }
+    } catch (error: any) {
+      console.error('Error generating summary:', error);
+      enqueueSnackbar(
+        error.message || 'Failed to generate AI summary. Please try again.', 
+        { variant: 'error' }
+      );
+    } finally {
+      setIsGeneratingSummary(false);
+    }
   };
 
   if (loading) {
@@ -587,7 +651,8 @@ const CourseContent: React.FC = () => {
                                     resource_url: '',
                                     lecture_order: (section.course_lectures?.length || 0) + 1,
                                     is_preview: false,
-                                    is_free: false
+                                    is_free: false,
+                                    summary: ''
                                   });
                                 }}
                                 className="px-3 py-1 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-1 text-sm"
@@ -666,7 +731,8 @@ const CourseContent: React.FC = () => {
                                         resource_url: lecture.resource_url || '',
                                         lecture_order: lecture.lecture_order,
                                         is_preview: lecture.is_preview,
-                                        is_free: lecture.is_free
+                                        is_free: lecture.is_free,
+                                        summary: lecture.summary || ''
                                       });
                                       setShowLectureForm(true);
                                     }}
@@ -704,7 +770,8 @@ const CourseContent: React.FC = () => {
                                       resource_url: '',
                                       lecture_order: 1,
                                       is_preview: false,
-                                      is_free: false
+                                      is_free: false,
+                                      summary: ''
                                     });
                                   }}
                                   className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -936,43 +1003,82 @@ const CourseContent: React.FC = () => {
 
                     {/* Conditional fields based on lecture type */}
                     {lectureForm.lecture_type === 'video' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Video Upload</label>
-                          <VideoUpload
-                            onFileSelect={async (video: File | null) => {
-                              if (video) {
-                                try {
-                                  // Upload video to Supabase storage
-                                  const uploadedUrl = await uploadFile(video, 'universityimages', 'course-content');
-                                  setLectureForm({ ...lectureForm, video_url: uploadedUrl });
-                                  enqueueSnackbar('Video uploaded successfully!', { variant: 'success' });
-                                } catch (error) {
-                                  console.error('Upload error:', error);
-                                  enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
-                                  // Fallback to temporary URL for preview
-                                  const tempUrl = URL.createObjectURL(video);
-                                  setLectureForm({ ...lectureForm, video_url: tempUrl });
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Video Upload</label>
+                            <VideoUpload
+                              onFileSelect={async (video: File | null) => {
+                                if (video) {
+                                  try {
+                                    // Upload video to Supabase storage
+                                    const uploadedUrl = await uploadFile(video, 'universityimages', 'course-content');
+                                    setLectureForm({ ...lectureForm, video_url: uploadedUrl });
+                                    enqueueSnackbar('Video uploaded successfully!', { variant: 'success' });
+                                  } catch (error) {
+                                    console.error('Upload error:', error);
+                                    enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                                    // Don't set any URL if upload fails
+                                  }
+                                } else {
+                                  setLectureForm({ ...lectureForm, video_url: '' });
                                 }
-                              } else {
-                                setLectureForm({ ...lectureForm, video_url: '' });
-                              }
-                            }}
-                            currentVideoUrl={lectureForm.video_url}
-                            label="Lecture Video"
-                            placeholder="Upload lecture video"
-                            maxSize={100}
-                          />
+                              }}
+                              currentVideoUrl={lectureForm.video_url}
+                              label="Lecture Video"
+                              placeholder="Upload lecture video"
+                              maxSize={100}
+                            />
+                            
+                            {/* AI Summary Button - Show only when video is uploaded */}
+                            {lectureForm.video_url && (
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => generateVideoSummary(lectureForm.video_url)}
+                                  disabled={isGeneratingSummary}
+                                  className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  {isGeneratingSummary ? (
+                                    <>
+                                      <IconWrapper icon={FaSpinner} className="animate-spin" size={16} />
+                                      Generating AI Summary...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <IconWrapper icon={FaRobot} size={16} />
+                                      Generate AI Summary
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (seconds)</label>
+                            <input
+                              type="number"
+                              value={lectureForm.video_duration_seconds}
+                              onChange={(e) => setLectureForm({ ...lectureForm, video_duration_seconds: parseInt(e.target.value) || 0 })}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              min="0"
+                            />
+                          </div>
                         </div>
 
+                        {/* AI Generated Summary Text Area */}
                         <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Duration (seconds)</label>
-                          <input
-                            type="number"
-                            value={lectureForm.video_duration_seconds}
-                            onChange={(e) => setLectureForm({ ...lectureForm, video_duration_seconds: parseInt(e.target.value) || 0 })}
+                          <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            Lecture Summary
+                            <span className="text-xs text-gray-500 ml-2">(AI Generated - You can edit this)</span>
+                          </label>
+                          <textarea
+                            value={lectureForm.summary}
+                            onChange={(e) => setLectureForm({ ...lectureForm, summary: e.target.value })}
+                            rows={6}
                             className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            min="0"
+                            placeholder="Upload a video and click 'Generate AI Summary' to automatically create a comprehensive summary of the video content..."
                           />
                         </div>
                       </div>
@@ -1005,9 +1111,7 @@ const CourseContent: React.FC = () => {
                               } catch (error) {
                                 console.error('Upload error:', error);
                                 enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
-                                // Fallback to temporary URL for preview
-                                const tempUrl = URL.createObjectURL(file);
-                                setLectureForm({ ...lectureForm, resource_url: tempUrl });
+                                // Don't set any URL if upload fails
                               }
                             } else {
                               setLectureForm({ ...lectureForm, resource_url: '' });

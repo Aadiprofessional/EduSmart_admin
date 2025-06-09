@@ -20,11 +20,41 @@ export const ensureBucket = async () => {
     if (!bucketExists) {
       console.log('Creating universityimages bucket...');
       
-      // Create the bucket
+      // Create the bucket with proper configuration
       const { error: createError } = await supabaseAdmin.storage.createBucket('universityimages', {
         public: true,
-        allowedMimeTypes: ['image/*', 'video/*', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-        fileSizeLimit: 52428800 // 50MB
+        allowedMimeTypes: [
+          // Images
+          'image/jpeg',
+          'image/jpg', 
+          'image/png',
+          'image/gif',
+          'image/webp',
+          'image/svg+xml',
+          'image/bmp',
+          'image/x-icon',
+          // Videos
+          'video/mp4',
+          'video/webm',
+          'video/avi',
+          'video/x-msvideo',
+          'video/quicktime',
+          'video/x-ms-wmv',
+          'video/x-flv',
+          'video/x-matroska',
+          'video/3gpp',
+          // Audio
+          'audio/mpeg',
+          'audio/wav',
+          'audio/ogg',
+          'audio/aac',
+          // Documents
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/plain'
+        ],
+        fileSizeLimit: 104857600 // 100MB (increased from 50MB)
       });
       
       if (createError) {

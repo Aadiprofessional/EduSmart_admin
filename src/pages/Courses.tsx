@@ -999,9 +999,7 @@ const Courses: React.FC = () => {
                     } catch (error) {
                       console.error('Upload error:', error);
                       enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
-                      // Fallback to temporary URL for preview
-                      const tempUrl = URL.createObjectURL(file);
-                      setFormData({ ...formData, thumbnail_image: tempUrl });
+                      // Don't set any URL if upload fails
                     }
                   } else {
                     setFormData({ ...formData, thumbnail_image: '' });
@@ -1027,9 +1025,7 @@ const Courses: React.FC = () => {
                     } catch (error) {
                       console.error('Upload error:', error);
                       enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
-                      // Fallback to temporary URL for preview
-                      const tempUrl = URL.createObjectURL(video);
-                      setFormData({ ...formData, preview_video_url: tempUrl });
+                      // Don't set any URL if upload fails
                     }
                   } else {
                     setFormData({ ...formData, preview_video_url: '' });

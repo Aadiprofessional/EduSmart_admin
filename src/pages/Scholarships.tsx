@@ -913,16 +913,12 @@ const Scholarships: React.FC = () => {
                                 enqueueSnackbar('Image uploaded successfully!', { variant: 'success' });
                               } else {
                                 enqueueSnackbar(`Upload failed: ${uploadResult.error}`, { variant: 'error' });
-                                // Fallback to temporary URL for preview
-                                const tempUrl = URL.createObjectURL(file);
-                                setFormData({ ...formData, image: tempUrl });
+                                // Don't set any URL if upload fails
                               }
                             } catch (error) {
                               console.error('Upload error:', error);
-                              enqueueSnackbar('Upload failed. Using temporary preview.', { variant: 'warning' });
-                              // Fallback to temporary URL for preview
-                              const tempUrl = URL.createObjectURL(file);
-                              setFormData({ ...formData, image: tempUrl });
+                              enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                              // Don't set any URL if upload fails
                             }
                           } else {
                             setFormData({ ...formData, image: '' });

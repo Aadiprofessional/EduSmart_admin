@@ -1016,16 +1016,12 @@ const Universities: React.FC = () => {
                                   enqueueSnackbar('Logo uploaded successfully!', { variant: 'success' });
                                 } else {
                                   enqueueSnackbar(`Upload failed: ${uploadResult.error}`, { variant: 'error' });
-                                  // Fallback to temporary URL for preview
-                                  const tempUrl = URL.createObjectURL(file);
-                                  setFormData({ ...formData, logo: tempUrl });
+                                  // Don't set any URL if upload fails
                                 }
                               } catch (error) {
                                 console.error('Upload error:', error);
-                                enqueueSnackbar('Upload failed. Using temporary preview.', { variant: 'warning' });
-                                // Fallback to temporary URL for preview
-                                const tempUrl = URL.createObjectURL(file);
-                                setFormData({ ...formData, logo: tempUrl });
+                                enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
+                                // Don't set any URL if upload fails
                               }
                             } else {
                               setFormData({ ...formData, logo: '' });
@@ -1053,9 +1049,7 @@ const Universities: React.FC = () => {
                               } catch (error) {
                                 console.error('Upload error:', error);
                                 enqueueSnackbar('Upload failed. Please try again.', { variant: 'error' });
-                                // Fallback to temporary URL for preview
-                                const tempUrl = URL.createObjectURL(file);
-                                setFormData({ ...formData, image: tempUrl });
+                                // Don't set any URL if upload fails
                               }
                             } else {
                               setFormData({ ...formData, image: '' });

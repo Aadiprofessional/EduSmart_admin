@@ -42,11 +42,12 @@ const VideoUpload: React.FC<VideoUploadProps> = ({
     setIsUploading(true);
 
     try {
-      // Create preview URL for video
+      // Create preview URL for video display only
       const videoUrl = URL.createObjectURL(file);
       setPreview(videoUrl);
 
-      // Pass the file to the parent component
+      // Pass the actual File object to the parent component
+      // The parent is responsible for uploading and getting the real URL
       onFileSelect(file);
     } catch (error) {
       setError('Failed to process video file');
